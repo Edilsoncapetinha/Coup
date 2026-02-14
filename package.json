@@ -4,12 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "npm run dev --prefix Coup",
-    "build": "npm install --prefix Coup && npm run build --prefix Coup",
-    "start": "npm start --prefix Coup",
-    "lint": "npm run lint --prefix Coup",
-    "preview": "npm run preview --prefix Coup",
-    "test": "npm run test --prefix Coup"
+    "dev": "npm run dev --prefix coup",
+    "build": "npm install --prefix coup && npm run build --prefix coup",
+    "start": "npm start --prefix coup",
+    "lint": "npm run lint --prefix coup",
+    "preview": "npm run preview --prefix coup",
+    "test": "npm run test --prefix coup"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
