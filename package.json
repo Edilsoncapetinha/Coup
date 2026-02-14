@@ -4,13 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "build:dev": "vite build --mode development",
-    "lint": "eslint .",
-    "preview": "vite preview",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "dev": "cd Coup && npm run dev",
+    "build": "cd Coup && npm install && npm run build",
+    "start": "cd Coup && npm start",
+    "lint": "cd Coup && npm run lint",
+    "preview": "cd Coup && npm run preview",
+    "test": "cd Coup && npm run test"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
