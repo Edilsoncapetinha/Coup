@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "cd Coup && npm run dev",
-    "build": "cd Coup && npm install && npm run build",
+    "build": "cd Coup && npm ci --no-audit && npm run build",
     "start": "cd Coup && npm start",
     "lint": "cd Coup && npm run lint",
     "preview": "cd Coup && npm run preview",
