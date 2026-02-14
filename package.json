@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "cd Coup && npm run dev",
-    "build": "cd Coup && npm ci --no-audit && npm run build",
-    "start": "cd Coup && npm start",
+    "build": "cd Coup && npm ci --no-audit && npx vite build",
+    "start": "cd Coup && NODE_ENV=production node server/index.js",
     "lint": "cd Coup && npm run lint",
     "preview": "cd Coup && npm run preview",
     "test": "cd Coup && npm run test"
