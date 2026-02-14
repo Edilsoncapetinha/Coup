@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "npm run dev --prefix Coup",
-    "build": "npm install --prefix Coup && npm run build --prefix Coup",
+    "build": "ls -R",
     "start": "npm start --prefix Coup",
     "lint": "npm run lint --prefix Coup",
     "preview": "npm run preview --prefix Coup",
