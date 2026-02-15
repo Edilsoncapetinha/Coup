@@ -3,6 +3,7 @@ import { GamePhase, ActionType, Character, type GameState, type GameAction } fro
 import { getAlivePlayers, getAliveInfluence, getPlayerById } from '../../game/gameEngine';
 import { CHARACTER_DEFINITIONS, getCharactersThatBlock } from '../../game/characters';
 import { CHAR_IMAGE } from '../game/PlayerSlot';
+import TurnTimerWrapper from './TurnTimerWrapper';
 
 /**
  * HUD overlay — 2D interface rendered on top of the 3D scene.
@@ -102,6 +103,18 @@ export default function HUD({
                     <span className="text-amber-200/60 text-xs">
                         {currentPlayer.name}{isHumanTurn ? ' (Você)' : ''}
                     </span>
+                    {/* Turn Timer */}
+                    <div className="mt-1 w-full flex justify-center">
+                        <TurnTimerWrapper
+                            gameState={gameState}
+                            humanPlayer={humanPlayer}
+                            onAction={onAction}
+                            onPassChallenge={onPassChallenge}
+                            onPassBlock={onPassBlock}
+                            onPassCoupRedirect={onPassCoupRedirect}
+                            onPassCoupRedirectChallenge={onPassCoupRedirectChallenge}
+                        />
+                    </div>
                 </div>
 
                 {/* Opponent coin counters */}
