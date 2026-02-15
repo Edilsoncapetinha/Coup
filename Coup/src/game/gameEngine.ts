@@ -362,6 +362,7 @@ export function challengeAction(state: GameState, challengerId: string): GameSta
             ...newState,
             phase: GamePhase.AwaitingCardSelection,
             respondedPlayerIds: [challengerId], // mark who needs to select
+            cardSelectionReason: 'challenge-penalty',
         };
     }
 
@@ -406,6 +407,7 @@ export function challengeAction(state: GameState, challengerId: string): GameSta
         ...newState,
         phase: GamePhase.AwaitingCardSelection,
         respondedPlayerIds: [actor.id],
+        cardSelectionReason: 'challenge-penalty',
     };
 }
 
@@ -544,6 +546,7 @@ export function challengeBlock(state: GameState, challengerId: string): GameStat
             ...newState,
             phase: GamePhase.AwaitingCardSelection,
             respondedPlayerIds: [challengerId],
+            cardSelectionReason: 'challenge-penalty',
         };
     }
 
@@ -982,7 +985,7 @@ export function challengeCoupRedirect(state: GameState, challengerId: string): G
             const idx = getPlayerById(newState, challengerId).influenceCards.findIndex(
                 (c) => !c.isRevealed
             );
-            newState = loseInfluence(newState, challengerId, idx);
+            newState = loseInfluence({ ...newState, cardSelectionReason: 'challenge-penalty' }, challengerId, idx);
             if (newState.phase === GamePhase.GameOver) return newState;
         } else {
             // Challenger must choose which card to lose, then redirect continues
@@ -1013,7 +1016,7 @@ export function challengeCoupRedirect(state: GameState, challengerId: string): G
         const targetAlive = getAliveInfluence(newTarget);
         if (targetAlive.length === 1) {
             const idx = newTarget.influenceCards.findIndex((c) => !c.isRevealed);
-            return advanceTurn(loseInfluence({ ...newState, coupRedirectChain: [], coupRedirectSourceId: null }, newTargetId, idx));
+            return advanceTurn(loseInfluence({ ...newState, coupRedirectChain: [], coupRedirectSourceId: null, cardSelectionReason: 'action-effect' }, newTargetId, idx));
         }
         return {
             ...newState,
@@ -1149,7 +1152,6 @@ export function selectCardToLose(state: GameState, playerId: string, cardIndex: 
 
     // After losing card from challenge on action, continue to block phase or resolve
     if (state.phase === GamePhase.AwaitingCardSelection && state.pendingAction) {
-        console.log('[DEBUG-V2] Fix loaded: Checking ActionType', state.pendingAction.type);
         // Was this the challenger losing a card? (challenge failed, action proceeds)
         if (playerId !== state.pendingAction.sourcePlayerId) {
             // Assassinate rule: If challenge failed, skip block phase and resolve
@@ -1157,8 +1159,14 @@ export function selectCardToLose(state: GameState, playerId: string, cardIndex: 
                 return resolveAction(newState);
             }
 
-            // Fix for Coup Double Damage: Coup damage is final, do not re-resolve
+            // Fix for Coup Double Damage: Coup damage is final UNLESS this was just a challenge penalty
             if (state.pendingAction.type === ActionType.Coup) {
+                if (state.cardSelectionReason === 'challenge-penalty') {
+                    // If redirection was active, the challenge was for the redirection, Coup stands
+                    if (state.coupRedirectChain.length > 0) {
+                        return resolveAction(newState);
+                    }
+                }
                 return advanceTurn({ ...newState, cardSelectionReason: undefined });
             }
 
@@ -1178,6 +1186,13 @@ export function selectCardToLose(state: GameState, playerId: string, cardIndex: 
         }
 
         // Actor lost a card (challenge succeeded, action fails)
+        if (state.cardSelectionReason === 'challenge-penalty') {
+            // If redirection challenge fails, redirection stands and becomes the action.
+            // We need to allow resolveAction to proceed with the redirect.
+            if (state.coupRedirectChain.length > 0) {
+                return resolveAction(newState);
+            }
+        }
         return advanceTurn({ ...newState, cardSelectionReason: undefined });
     }
 

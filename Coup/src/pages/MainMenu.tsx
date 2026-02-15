@@ -77,7 +77,7 @@ export default function MainMenu() {
                 2–6 Jogadores · Offline · Todas as Extensões
             </p>
             <p className="absolute bottom-2 right-4 text-emerald-500/50 text-[10px] tracking-widest font-mono">
-                v1.1 (Double Damage Fix)
+                v1.2 (Double Damage Fix + Redirect Challenge Fix)
             </p>
 
             <style>{`

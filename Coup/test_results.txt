@@ -1,0 +1,10 @@
+﻿--- Starting Redirection Challenge Repro Test ---
+Initial State: P1 coins: 10 P2 cards: 2
+Action: P1 Coup P2. Phase: AwaitingCoupRedirect
+Action: P2 Redirects back to P1. Phase: AwaitingCoupRedirectChallenge
+Action: P1 Challenges P2. Phase: AwaitingCardSelection
+P1 Alive cards before penalty choice: 2
+[TEST] [DEBUG-V3] selectCardToLose - Reason: challenge-penalty Action: Coup
+Action: P1 selects card 0 for PENALTY. Phase: AwaitingCoupRedirect
+P1 Alive cards after penalty selection: 1
+SUCCESS: Phase is AwaitingCoupRedirect (Correctly waiting for Coup damage/redirect)
