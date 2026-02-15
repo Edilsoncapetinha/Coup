@@ -108,7 +108,7 @@ export default function TurnTimerWrapper({
         GamePhase.AwaitingCoupRedirectChallenge
     ].includes(phase);
 
-    if (!isTimedPhase) {
+    if (!isTimedPhase || !isActive) {
         return null;
     }
 
