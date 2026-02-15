@@ -375,6 +375,7 @@ export function challengeAction(state: GameState, challengerId: string): GameSta
                 'challenge'
             ),
         ],
+        cardSelectionReason: 'challenge-penalty',
     };
 
     // Refund action cost
@@ -475,7 +476,7 @@ export function declareBlock(
         log: [
             ...state.log,
             createLogEntry(
-                `${blocker.name} bloqueia com ${claimedCharacter}!`,
+                `${blocker.name} bloqueia com ${claimedCharacter} !`,
                 'block'
             ),
         ],
@@ -508,7 +509,7 @@ export function challengeBlock(state: GameState, challengerId: string): GameStat
         ...state,
         log: [
             ...state.log,
-            createLogEntry(`${challenger.name} desafia o bloqueio de ${blocker.name}!`, 'challenge'),
+            createLogEntry(`${challenger.name} desafia o bloqueio de ${blocker.name} !`, 'challenge'),
         ],
     };
 
@@ -522,7 +523,7 @@ export function challengeBlock(state: GameState, challengerId: string): GameStat
             log: [
                 ...newState.log,
                 createLogEntry(
-                    `${blocker.name} revela ${claimedChar}! Bloqueio bem-sucedido.`,
+                    `${blocker.name} revela ${claimedChar} !Bloqueio bem - sucedido.`,
                     'challenge'
                 ),
             ],
@@ -556,6 +557,7 @@ export function challengeBlock(state: GameState, challengerId: string): GameStat
                 'challenge'
             ),
         ],
+        cardSelectionReason: 'challenge-penalty',
     };
 
     const blkAlive = getAliveInfluence(getPlayerById(newState, blocker.id));
@@ -639,7 +641,7 @@ export function resolveAction(state: GameState): GameState {
                 log: [
                     ...state.log,
                     createLogEntry(
-                        `${actor.name} dá um Golpe em ${getPlayerName(state, action.targetPlayerId)}!`,
+                        `${actor.name} dá um Golpe em ${getPlayerName(state, action.targetPlayerId)} !`,
                         'action'
                     ),
                 ],
@@ -647,7 +649,7 @@ export function resolveAction(state: GameState): GameState {
 
             // Check if target can claim Jester to redirect
             const coupTarget = getPlayerById(coupLog, action.targetPlayerId);
-            if (!coupTarget.isEliminated && state.config.enabledCharacters.includes(Character.Jester)) {
+            if (!action.redirectDeclined && !coupTarget.isEliminated && state.config.enabledCharacters.includes(Character.Jester)) {
                 return {
                     ...coupLog,
                     phase: GamePhase.AwaitingCoupRedirect,
@@ -667,6 +669,7 @@ export function resolveAction(state: GameState): GameState {
                 ...coupLog,
                 phase: GamePhase.AwaitingCardSelection,
                 respondedPlayerIds: [action.targetPlayerId],
+                cardSelectionReason: 'action-effect',
             };
         }
 
@@ -709,7 +712,7 @@ export function resolveAction(state: GameState): GameState {
                 log: [
                     ...state.log,
                     createLogEntry(
-                        `${actor.name} assassina ${getPlayerName(state, action.targetPlayerId)}!`,
+                        `${actor.name} assassina ${getPlayerName(state, action.targetPlayerId)} !`,
                         'action'
                     ),
                 ],
@@ -732,6 +735,7 @@ export function resolveAction(state: GameState): GameState {
                 ...newState,
                 phase: GamePhase.AwaitingCardSelection,
                 respondedPlayerIds: [action.targetPlayerId],
+                cardSelectionReason: 'action-effect',
             };
         }
 
@@ -821,7 +825,7 @@ export function resolveAction(state: GameState): GameState {
                 phase: GamePhase.AwaitingExchangeSelection,
                 log: [
                     ...state.log,
-                    createLogEntry(`${actor.name} troca sua própria carta (Inquisidor).`, 'exchange'),
+                    createLogEntry(`${actor.name} troca sua própria carta(Inquisidor).`, 'exchange'),
                 ],
             };
         }
@@ -888,7 +892,7 @@ export function declareCoupRedirect(
         log: [
             ...state.log,
             createLogEntry(
-                `${redirector.name} alega Bufão e redireciona o Golpe para ${newTarget.name}!`,
+                `${redirector.name} alega Bufão e redireciona o Golpe para ${newTarget.name} !`,
                 'action'
             ),
         ],
@@ -902,6 +906,7 @@ export function passCoupRedirect(state: GameState, playerId: string): GameState 
 
     const newState: GameState = {
         ...state,
+        pendingAction: { ...state.pendingAction!, redirectDeclined: true },
         coupRedirectChain: [],
         coupRedirectSourceId: null,
         log: [
@@ -919,6 +924,7 @@ export function passCoupRedirect(state: GameState, playerId: string): GameState 
         ...newState,
         phase: GamePhase.AwaitingCardSelection,
         respondedPlayerIds: [playerId],
+        cardSelectionReason: 'action-effect',
     };
 }
 
@@ -934,7 +940,7 @@ export function challengeCoupRedirect(state: GameState, challengerId: string): G
         log: [
             ...state.log,
             createLogEntry(
-                `${challenger.name} desafia o Bufão de ${redirector.name}!`,
+                `${challenger.name} desafia o Bufão de ${redirector.name} !`,
                 'challenge'
             ),
         ],
@@ -984,6 +990,7 @@ export function challengeCoupRedirect(state: GameState, challengerId: string): G
                 ...newState,
                 phase: GamePhase.AwaitingCardSelection,
                 respondedPlayerIds: [challengerId],
+                cardSelectionReason: 'challenge-penalty',
             };
         }
 
@@ -1023,7 +1030,7 @@ export function challengeCoupRedirect(state: GameState, challengerId: string): G
         log: [
             ...newState.log,
             createLogEntry(
-                `${redirector.name} não tem ${redirectorOccurrences}x Bufão! Perde DUAS cartas (perda dupla)!`,
+                `${redirector.name} não tem ${redirectorOccurrences}x Bufão! Perde DUAS cartas(perda dupla)!`,
                 'challenge'
             ),
         ],
@@ -1142,6 +1149,7 @@ export function selectCardToLose(state: GameState, playerId: string, cardIndex: 
 
     // After losing card from challenge on action, continue to block phase or resolve
     if (state.phase === GamePhase.AwaitingCardSelection && state.pendingAction) {
+        console.log('[DEBUG-V2] Fix loaded: Checking ActionType', state.pendingAction.type);
         // Was this the challenger losing a card? (challenge failed, action proceeds)
         if (playerId !== state.pendingAction.sourcePlayerId) {
             // Assassinate rule: If challenge failed, skip block phase and resolve
@@ -1149,21 +1157,31 @@ export function selectCardToLose(state: GameState, playerId: string, cardIndex: 
                 return resolveAction(newState);
             }
 
+            // Fix for Coup Double Damage: Coup damage is final, do not re-resolve
+            if (state.pendingAction.type === ActionType.Coup) {
+                return advanceTurn({ ...newState, cardSelectionReason: undefined });
+            }
+
             const canBeBlocked = isActionBlockable(
                 state.pendingAction.type,
                 newState.config.enabledCharacters
             );
+            if (state.cardSelectionReason === 'action-effect') {
+                return advanceTurn({ ...newState, cardSelectionReason: undefined });
+            }
+
             if (canBeBlocked) {
                 return { ...newState, phase: GamePhase.AwaitingBlock, respondedPlayerIds: [] };
             }
+
             return resolveAction(newState);
         }
 
         // Actor lost a card (challenge succeeded, action fails)
-        return advanceTurn(newState);
+        return advanceTurn({ ...newState, cardSelectionReason: undefined });
     }
 
-    return advanceTurn(newState);
+    return advanceTurn({ ...newState, cardSelectionReason: undefined });
 }
 
 // ── Completar Troca (Exchange) ────────────────────────────
@@ -1264,6 +1282,7 @@ export function advanceTurn(state: GameState): GameState {
         turnNumber: state.turnNumber + 1,
         coupRedirectChain: [],
         coupRedirectSourceId: null,
+        cardSelectionReason: undefined,
     };
 }
 

@@ -88,6 +88,7 @@ export interface GameAction {
     targetPlayerId?: string;
     claimedCharacter?: Character;
     examinedCard?: { card: InfluenceCard; index: number };
+    redirectDeclined?: boolean;
 }
 
 // ── Bloqueio Pendente ─────────────────────────────────────
@@ -140,6 +141,7 @@ export interface GameState {
     // Coup redirect chain (Bufão)
     coupRedirectChain: string[];
     coupRedirectSourceId: string | null;
+    cardSelectionReason?: 'challenge-penalty' | 'action-effect';
 }
 
 // ── Definição Declarativa de Personagem ───────────────────
