@@ -76,6 +76,9 @@ export default function MainMenu() {
             <p className="absolute bottom-6 text-amber-200/20 text-xs tracking-wider">
                 2–6 Jogadores · Offline · Todas as Extensões
             </p>
+            <p className="absolute bottom-2 right-4 text-emerald-500/50 text-[10px] tracking-widest font-mono">
+                v1.1 (Double Damage Fix)
+            </p>
 
             <style>{`
         @keyframes fade-in {
