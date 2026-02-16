@@ -171,7 +171,7 @@ export default function HUD({
                 </div>
             </div>
 
-            {/* Game log — right side */}
+            {/* Game log — right side (Resized & Auto-scroll) */}
             <div className="absolute right-4 top-16 w-96 pointer-events-auto">
                 <div className="bg-black/60 backdrop-blur-md rounded-xl border border-gray-700/30 overflow-hidden">
                     <div className="px-3 py-1.5 border-b border-gray-700/30 bg-black/40">

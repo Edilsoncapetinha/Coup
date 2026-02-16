@@ -597,757 +597,773 @@ export function challengeBlock(state: GameState, challengerId: string): GameStat
         };
 
         newState = replaceRevealedCard(newState, blocker.id, claimedChar);
-        // ...
-        // Challenge on block succeeds -> blocker loses influence, action resolves
-        newState = {
-            ...newState,
-            log: [
-                ...newState.log,
-                createLogEntry(
-                    `${blocker.name} MENTIU sobre ser ${claimedChar}! Bloqueio falhou.`,
-                    'challenge'
-                ),
-            ],
-            cardSelectionReason: 'challenge-penalty',
-        };
 
-        const blkAlive = getAliveInfluence(getPlayerById(newState, blocker.id));
-        if (blkAlive.length === 1) {
-            const idx = getPlayerById(newState, blocker.id).influenceCards.findIndex(
+        // Challenger loses influence
+        const challengerAlive = getAliveInfluence(getPlayerById(newState, challenger.id));
+        if (challengerAlive.length === 1) {
+            const idx = getPlayerById(newState, challenger.id).influenceCards.findIndex(
                 (c) => !c.isRevealed
             );
-            newState = loseInfluence(newState, blocker.id, idx);
-            if (newState.phase === GamePhase.GameOver) return newState;
-            return resolveAction(newState);
+            return advanceTurn(loseInfluence(newState, challenger.id, idx));
         }
 
         return {
             ...newState,
             phase: GamePhase.AwaitingCardSelection,
-            respondedPlayerIds: [blocker.id],
+            respondedPlayerIds: [challenger.id],
+            cardSelectionReason: 'challenge-penalty',
         };
     }
+    // Challenge on block succeeds -> blocker loses influence, action resolves
+    newState = {
+        ...newState,
+        log: [
+            ...newState.log,
+            createLogEntry(
+                `${blocker.name} MENTIU sobre ser ${claimedChar}! Bloqueio falhou.`,
+                'challenge'
+            ),
+        ],
+        cardSelectionReason: 'challenge-penalty',
+    };
 
-    // ── Substituir carta revelada por desafio ─────────────────
-    function replaceRevealedCard(state: GameState, playerId: string, character: Character): GameState {
-        const player = getPlayerById(state, playerId);
-        const cardIdx = player.influenceCards.findIndex(
-            (c) => c.character === character && !c.isRevealed
+    const blkAlive = getAliveInfluence(getPlayerById(newState, blocker.id));
+    if (blkAlive.length === 1) {
+        const idx = getPlayerById(newState, blocker.id).influenceCards.findIndex(
+            (c) => !c.isRevealed
         );
-
-        if (cardIdx === -1) return state;
-
-        // Put card back in deck and draw new one
-        const newDeck = shuffleArray([...state.courtDeck, character]);
-        const newCard = newDeck.pop()!;
-
-        return {
-            ...state,
-            courtDeck: newDeck,
-            players: state.players.map((p) => {
-                if (p.id !== playerId) return p;
-                return {
-                    ...p,
-                    influenceCards: p.influenceCards.map((c, i) =>
-                        i === cardIdx ? { character: newCard, isRevealed: false } : c
-                    ),
-                };
-            }),
-        };
+        newState = loseInfluence(newState, blocker.id, idx);
+        if (newState.phase === GamePhase.GameOver) return newState;
+        return resolveAction(newState);
     }
 
-    // ── Resolver Ação ─────────────────────────────────────────
-    export function resolveAction(state: GameState): GameState {
-        const action = state.pendingAction;
-        if (!action) throw new Error('Sem ação a resolver');
+    return {
+        ...newState,
+        phase: GamePhase.AwaitingCardSelection,
+        respondedPlayerIds: [blocker.id],
+    };
+}
 
-        const actor = getPlayerById(state, action.sourcePlayerId);
+// ── Substituir carta revelada por desafio ─────────────────
+function replaceRevealedCard(state: GameState, playerId: string, character: Character): GameState {
+    const player = getPlayerById(state, playerId);
+    const cardIdx = player.influenceCards.findIndex(
+        (c) => c.character === character && !c.isRevealed
+    );
 
-        switch (action.type) {
-            case ActionType.Income:
-                return advanceTurn({
-                    ...state,
-                    players: state.players.map((p) =>
-                        p.id === actor.id ? { ...p, coins: p.coins + 1 } : p
-                    ),
-                    log: [...state.log, createLogEntry(`${actor.name} recebe 1 moeda.`, 'action')],
-                });
+    if (cardIdx === -1) return state;
 
-            case ActionType.ForeignAid:
-                return advanceTurn({
-                    ...state,
-                    players: state.players.map((p) =>
-                        p.id === actor.id ? { ...p, coins: p.coins + 2 } : p
-                    ),
-                    log: [...state.log, createLogEntry(`${actor.name} recebe 2 moedas.`, 'action')],
-                });
+    // Put card back in deck and draw new one
+    const newDeck = shuffleArray([...state.courtDeck, character]);
+    const newCard = newDeck.pop()!;
 
-            case ActionType.Coup: {
-                if (!action.targetPlayerId) throw new Error('Coup requer alvo');
-                const coupLog: GameState = {
-                    ...state,
-                    players: state.players.map((p) =>
-                        p.id === actor.id ? { ...p } : p
-                    ),
-                    log: [
-                        ...state.log,
-                        createLogEntry(
-                            `${actor.name} dá um Golpe em ${getPlayerName(state, action.targetPlayerId)} !`,
-                            'action'
-                        ),
-                    ],
-                };
-
-                // Check if target can claim Jester to redirect
-                const coupTarget = getPlayerById(coupLog, action.targetPlayerId);
-                if (!action.redirectDeclined && !coupTarget.isEliminated && state.config.enabledCharacters.includes(Character.Jester)) {
-                    return {
-                        ...coupLog,
-                        phase: GamePhase.AwaitingCoupRedirect,
-                        coupRedirectChain: [action.targetPlayerId],
-                        coupRedirectSourceId: actor.id,
-                    };
-                }
-
-                // No Jester in game, resolve normally
-                const targetAlive = getAliveInfluence(coupTarget);
-                if (targetAlive.length === 1) {
-                    const idx = coupTarget.influenceCards.findIndex((c) => !c.isRevealed);
-                    return advanceTurn(loseInfluence(coupLog, action.targetPlayerId, idx));
-                }
-
-                return {
-                    ...coupLog,
-                    phase: GamePhase.AwaitingCardSelection,
-                    respondedPlayerIds: [action.targetPlayerId],
-                    cardSelectionReason: 'action-effect',
-                };
-            }
-
-            case ActionType.Tax:
-            case ActionType.SpeculatorTax:
-                return advanceTurn({
-                    ...state,
-                    players: state.players.map((p) =>
-                        p.id === actor.id ? { ...p, coins: p.coins + 3 } : p
-                    ),
-                    log: [...state.log, createLogEntry(`${actor.name} taxa 3 moedas.`, 'action')],
-                });
-
-            case ActionType.BureaucratTax: {
-                if (!action.targetPlayerId) throw new Error('BureaucratTax requer alvo');
-                return advanceTurn({
-                    ...state,
-                    players: state.players.map((p) => {
-                        if (p.id === actor.id) return { ...p, coins: p.coins + 2 }; // +3 -1
-                        if (p.id === action.targetPlayerId) return { ...p, coins: p.coins + 1 };
-                        return p;
-                    }),
-                    log: [
-                        ...state.log,
-                        createLogEntry(
-                            `${actor.name} taxa 3 moedas e dá 1 para ${getPlayerName(state, action.targetPlayerId)}.`,
-                            'action'
-                        ),
-                    ],
-                });
-            }
-
-            case ActionType.Assassinate: {
-                if (!action.targetPlayerId) throw new Error('Assassinate requer alvo');
-                const newState: GameState = {
-                    ...state,
-                    players: state.players.map((p) =>
-                        p.id === actor.id ? { ...p } : p
-                    ),
-                    log: [
-                        ...state.log,
-                        createLogEntry(
-                            `${actor.name} assassina ${getPlayerName(state, action.targetPlayerId)} !`,
-                            'action'
-                        ),
-                    ],
-                };
-
-                const target = getPlayerById(newState, action.targetPlayerId);
-                const targetAlive = getAliveInfluence(target);
-
-                // If target is already eliminated (e.g. lost last card to challenge), just advance
-                if (targetAlive.length === 0) {
-                    return advanceTurn(newState);
-                }
-
-                if (targetAlive.length === 1) {
-                    const idx = target.influenceCards.findIndex((c) => !c.isRevealed);
-                    return advanceTurn(loseInfluence(newState, action.targetPlayerId, idx));
-                }
-
-                return {
-                    ...newState,
-                    phase: GamePhase.AwaitingCardSelection,
-                    respondedPlayerIds: [action.targetPlayerId],
-                    cardSelectionReason: 'action-effect',
-                };
-            }
-
-            case ActionType.Steal: {
-                if (!action.targetPlayerId) throw new Error('Steal requer alvo');
-                const target = getPlayerById(state, action.targetPlayerId);
-                const stolen = Math.min(2, target.coins);
-
-                return advanceTurn({
-                    ...state,
-                    players: state.players.map((p) => {
-                        if (p.id === actor.id) return { ...p, coins: p.coins + stolen };
-                        if (p.id === action.targetPlayerId) return { ...p, coins: p.coins - stolen };
-                        return p;
-                    }),
-                    log: [
-                        ...state.log,
-                        createLogEntry(
-                            `${actor.name} rouba ${stolen} moeda(s) de ${getPlayerName(state, action.targetPlayerId)}.`,
-                            'action'
-                        ),
-                    ],
-                });
-            }
-
-            case ActionType.Exchange: {
-                // Ambassador: return all alive cards to deck, draw same count
-                const aliveCards = getAliveInfluence(actor);
-                const aliveCount = aliveCards.length;
-                const returnedChars = aliveCards.map((c) => c.character);
-
-                // Put alive cards back and shuffle
-                let newDeck = shuffleArray([...state.courtDeck, ...returnedChars]);
-
-                // Draw same number of cards
-                const newCards: Character[] = [];
-                for (let i = 0; i < aliveCount && newDeck.length > 0; i++) {
-                    newCards.push(newDeck.pop()!);
-                }
-
-                // Build new influence cards (new drawn + existing revealed)
-                const newInfluence = [
-                    ...newCards.map((c) => ({ character: c, isRevealed: false })),
-                    ...actor.influenceCards.filter((c) => c.isRevealed),
-                ];
-
-                return advanceTurn({
-                    ...state,
-                    courtDeck: newDeck,
-                    players: state.players.map((p) =>
-                        p.id === actor.id ? { ...p, influenceCards: newInfluence } : p
-                    ),
-                    log: [
-                        ...state.log,
-                        createLogEntry(`${actor.name} troca suas cartas com o baralho.`, 'exchange'),
-                    ],
-                });
-            }
-
-            case ActionType.Examine: {
-                // Enter Inquisitor choice phase: examine OR self-exchange
-                return {
-                    ...state,
-                    phase: GamePhase.AwaitingInquisitorChoice,
-                    log: [
-                        ...state.log,
-                        createLogEntry(
-                            `${actor.name} usa o poder do Inquisidor.`,
-                            'action'
-                        ),
-                    ],
-                };
-            }
-
-
-
-            case ActionType.InquisitorSelfExchange: {
-                // Draw 1 card from deck for self-exchange
-                const newDeck = [...state.courtDeck];
-                const drawn: Character[] = [];
-                if (newDeck.length > 0) drawn.push(newDeck.pop()!);
-
-                return {
-                    ...state,
-                    courtDeck: newDeck,
-                    drawnCards: drawn,
-                    phase: GamePhase.AwaitingExchangeSelection,
-                    log: [
-                        ...state.log,
-                        createLogEntry(`${actor.name} troca sua própria carta(Inquisidor).`, 'exchange'),
-                    ],
-                };
-            }
-
-            case ActionType.SocialistRedistribute: {
-                const alivePlayers = getAlivePlayers(state).filter((p) => p.id !== actor.id);
-                let totalCollected = 0;
-                const updatedPlayers = state.players.map((p) => {
-                    if (p.id === actor.id || p.isEliminated) return p;
-                    const take = Math.min(1, p.coins);
-                    totalCollected += take;
-                    return { ...p, coins: p.coins - take };
-                });
-
-                const kept = Math.min(1, totalCollected);
-                const returned = totalCollected - kept;
-
-                return advanceTurn({
-                    ...state,
-                    players: updatedPlayers.map((p) =>
-                        p.id === actor.id ? { ...p, coins: p.coins + kept } : p
-                    ),
-                    log: [
-                        ...state.log,
-                        createLogEntry(
-                            `${actor.name} redistribui: coletou ${totalCollected}, ficou com ${kept}.`,
-                            'action'
-                        ),
-                    ],
-                });
-            }
-
-            default:
-                return advanceTurn(state);
-        }
-    }
-
-    // ── Coup Redirect (Bufão) ─────────────────────────────────
-    export function declareCoupRedirect(
-        state: GameState,
-        redirectorId: string,
-        newTargetId: string
-    ): GameState {
-        const redirector = getPlayerById(state, redirectorId);
-        const newTarget = getPlayerById(state, newTargetId);
-
-        const matchSource = state.coupRedirectSourceId || state.pendingAction?.sourcePlayerId || '';
-        if (!matchSource) {
-            console.error('CRITICAL: Missing coup source in declareCoupRedirect');
-            // fallback to prevent crash, but this is bad state
-        }
-
-        return {
-            ...state,
-            phase: GamePhase.AwaitingCoupRedirectChallenge,
-            pendingAction: {
-                type: ActionType.Coup,
-                sourcePlayerId: matchSource,
-                targetPlayerId: newTargetId,
-                claimedCharacter: Character.Jester,
-            },
-            respondedPlayerIds: [],
-            coupRedirectChain: [...state.coupRedirectChain, newTargetId],
-            log: [
-                ...state.log,
-                createLogEntry(
-                    `${redirector.name} alega Bufão e redireciona o Golpe para ${newTarget.name} !`,
-                    'action'
+    return {
+        ...state,
+        courtDeck: newDeck,
+        players: state.players.map((p) => {
+            if (p.id !== playerId) return p;
+            return {
+                ...p,
+                influenceCards: p.influenceCards.map((c, i) =>
+                    i === cardIdx ? { character: newCard, isRevealed: false } : c
                 ),
-            ],
-        };
-    }
+            };
+        }),
+    };
+}
 
-    export function passCoupRedirect(state: GameState, playerId: string): GameState {
-        // Player accepts the coup, loses influence
-        const player = getPlayerById(state, playerId);
-        const aliveCards = getAliveInfluence(player);
+// ── Resolver Ação ─────────────────────────────────────────
+export function resolveAction(state: GameState): GameState {
+    const action = state.pendingAction;
+    if (!action) throw new Error('Sem ação a resolver');
 
-        const newState: GameState = {
-            ...state,
-            pendingAction: { ...state.pendingAction!, redirectDeclined: true },
-            coupRedirectChain: [],
-            coupRedirectSourceId: null,
-            log: [
-                ...state.log,
-                createLogEntry(`${player.name} aceita o Golpe.`, 'action'),
-            ],
-        };
+    const actor = getPlayerById(state, action.sourcePlayerId);
 
-        if (aliveCards.length === 1) {
-            const idx = player.influenceCards.findIndex((c) => !c.isRevealed);
-            return advanceTurn(loseInfluence(newState, playerId, idx));
-        }
-
-        return {
-            ...newState,
-            phase: GamePhase.AwaitingCardSelection,
-            respondedPlayerIds: [playerId],
-            cardSelectionReason: 'action-effect',
-        };
-    }
-
-    export function challengeCoupRedirect(state: GameState, challengerId: string): GameState {
-        // The last person in the redirect chain claimed Jester
-        const chain = state.coupRedirectChain;
-        const redirectorId = chain[chain.length - 2]; // The one who redirected
-        const redirector = getPlayerById(state, redirectorId);
-        const challenger = getPlayerById(state, challengerId);
-
-        let newState: GameState = {
-            ...state,
-            log: [
-                ...state.log,
-                createLogEntry(
-                    `${challenger.name} desafia o Bufão de ${redirector.name} !`,
-                    'challenge'
+    switch (action.type) {
+        case ActionType.Income:
+            return advanceTurn({
+                ...state,
+                players: state.players.map((p) =>
+                    p.id === actor.id ? { ...p, coins: p.coins + 1 } : p
                 ),
-            ],
-        };
+                log: [...state.log, createLogEntry(`${actor.name} pegou 1 moeda (Renda).`, 'action')],
+            });
 
-        const redirectorCards = getAliveInfluence(redirector);
-        const jesterCount = redirectorCards.filter((c) => c.character === Character.Jester).length;
+        case ActionType.ForeignAid:
+            return advanceTurn({
+                ...state,
+                players: state.players.map((p) =>
+                    p.id === actor.id ? { ...p, coins: p.coins + 2 } : p
+                ),
+                log: [...state.log, createLogEntry(`${actor.name} pegou 2 moedas (Ajuda Externa).`, 'action')],
+            });
 
-        // Count how many times this redirector appears in the chain (excluding the new target at the end)
-        // The chain includes the victims.
-        // [A, B, A, C] -> A redirected to B (index 0), B to A (index 1), A to C (index 2).
-        // Redirector is chain[chain.length - 2] (A).
-        // A appears at 0 and 2. So A has redirected 2 times.
-        const redirectorOccurrences = chain.slice(0, chain.length - 1).filter((id) => id === redirectorId).length;
-
-        const hasEnoughJesters = jesterCount >= redirectorOccurrences;
-
-        if (hasEnoughJesters) {
-            // Challenge fails — challenger loses influence, redirect stands
-            // Reveal and replace ALL required Jesters
-            newState = {
-                ...newState,
+        case ActionType.Coup: {
+            if (!action.targetPlayerId) throw new Error('Coup requer alvo');
+            const coupLog: GameState = {
+                ...state,
+                players: state.players.map((p) =>
+                    p.id === actor.id ? { ...p } : p
+                ),
                 log: [
-                    ...newState.log,
+                    ...state.log,
                     createLogEntry(
-                        `${redirector.name} revela ${redirectorOccurrences}x Bufão! ${challenger.name} perde influência.`,
-                        'challenge'
+                        `${actor.name} aplicou um GOLPE em ${getPlayerName(state, action.targetPlayerId)}!`,
+                        'action'
                     ),
                 ],
             };
-
-            // Replace the required number of Jesters
-            for (let i = 0; i < redirectorOccurrences; i++) {
-                newState = replaceRevealedCard(newState, redirector.id, Character.Jester);
-            }
-
-            const chalAlive = getAliveInfluence(getPlayerById(newState, challengerId));
-            if (chalAlive.length === 1) {
-                const idx = getPlayerById(newState, challengerId).influenceCards.findIndex(
-                    (c) => !c.isRevealed
-                );
-                newState = loseInfluence({ ...newState, cardSelectionReason: 'challenge-penalty' }, challengerId, idx);
-                if (newState.phase === GamePhase.GameOver) return newState;
-            } else {
-                // Challenger must choose which card to lose, then redirect continues
+            // ... (rest of Coup logic remains unchanged)
+            // Check if target can claim Jester to redirect
+            const coupTarget = getPlayerById(coupLog, action.targetPlayerId);
+            if (!action.redirectDeclined && !coupTarget.isEliminated && state.config.enabledCharacters.includes(Character.Jester)) {
                 return {
-                    ...newState,
-                    phase: GamePhase.AwaitingCardSelection,
-                    respondedPlayerIds: [challengerId],
-                    cardSelectionReason: 'challenge-penalty',
-                };
-            }
-
-            // After challenger lost card, redirect stands — check new target
-            const newTargetId = chain[chain.length - 1];
-            const newTarget = getPlayerById(newState, newTargetId);
-            if (newTarget.isEliminated) {
-                return advanceTurn({ ...newState, coupRedirectChain: [], coupRedirectSourceId: null });
-            }
-
-            // New target can also try to redirect
-            if (state.config.enabledCharacters.includes(Character.Jester)) {
-                return {
-                    ...newState,
+                    ...coupLog,
                     phase: GamePhase.AwaitingCoupRedirect,
+                    coupRedirectChain: [action.targetPlayerId],
+                    coupRedirectSourceId: actor.id,
                 };
             }
 
-            // No more redirects, target loses influence
-            const targetAlive = getAliveInfluence(newTarget);
+            // No Jester in game, resolve normally
+            const targetAlive = getAliveInfluence(coupTarget);
             if (targetAlive.length === 1) {
-                const idx = newTarget.influenceCards.findIndex((c) => !c.isRevealed);
-                return advanceTurn(loseInfluence({ ...newState, coupRedirectChain: [], coupRedirectSourceId: null, cardSelectionReason: 'action-effect' }, newTargetId, idx));
+                const idx = coupTarget.influenceCards.findIndex((c) => !c.isRevealed);
+                return advanceTurn(loseInfluence(coupLog, action.targetPlayerId, idx));
             }
+
             return {
-                ...newState,
-                coupRedirectChain: [],
-                coupRedirectSourceId: null,
+                ...coupLog,
                 phase: GamePhase.AwaitingCardSelection,
-                respondedPlayerIds: [newTargetId],
+                respondedPlayerIds: [action.targetPlayerId],
+                cardSelectionReason: 'action-effect',
             };
         }
 
-        // Challenge succeeds — redirector loses BOTH cards (double loss)
-        newState = {
-            ...newState,
-            log: [
-                ...newState.log,
-                createLogEntry(
-                    `${redirector.name} não tem ${redirectorOccurrences}x Bufão! Perde DUAS cartas(perda dupla)!`,
-                    'challenge'
-                ),
-            ],
-        };
-
-        // Lose all alive cards
-        const aliveCards = getAliveInfluence(getPlayerById(newState, redirectorId));
-        for (const card of aliveCards) {
-            // Find index of first unrevealed card
-            const idx = getPlayerById(newState, redirectorId).influenceCards.findIndex(
-                (c) => !c.isRevealed
-            );
-            if (idx !== -1) {
-                newState = loseInfluence(newState, redirectorId, idx);
-            }
-            if (newState.phase === GamePhase.GameOver) return newState;
-        }
-
-        return advanceTurn({ ...newState, coupRedirectChain: [], coupRedirectSourceId: null });
-    }
-
-    export function passCoupRedirectChallenge(state: GameState, playerId: string): GameState {
-        const responded = [...state.respondedPlayerIds, playerId];
-        const alive = getAlivePlayers(state).filter(
-            (p) => {
-                const chain = state.coupRedirectChain;
-                const redirectorId = chain[chain.length - 2];
-                return p.id !== redirectorId; // Everyone except the redirector can challenge
-            }
-        );
-
-        if (responded.length >= alive.length) {
-            // No one challenged, redirect succeeds
-            const chain = state.coupRedirectChain;
-            const newTargetId = chain[chain.length - 1];
-            const newTarget = getPlayerById(state, newTargetId);
-
-            if (newTarget.isEliminated) {
-                return advanceTurn({ ...state, coupRedirectChain: [], coupRedirectSourceId: null });
-            }
-
-            // New target can also try to redirect
-            if (state.config.enabledCharacters.includes(Character.Jester)) {
-                return {
-                    ...state,
-                    phase: GamePhase.AwaitingCoupRedirect,
-                    respondedPlayerIds: [],
-                };
-            }
-
-            // Resolve coup on new target
-            const targetAlive = getAliveInfluence(newTarget);
-            if (targetAlive.length === 1) {
-                const idx = newTarget.influenceCards.findIndex((c) => !c.isRevealed);
-                return advanceTurn(loseInfluence({ ...state, coupRedirectChain: [], coupRedirectSourceId: null }, newTargetId, idx));
-            }
-            return {
-                ...state,
-                coupRedirectChain: [],
-                coupRedirectSourceId: null,
-                phase: GamePhase.AwaitingCardSelection,
-                respondedPlayerIds: [newTargetId],
-            };
-        }
-
-        return { ...state, respondedPlayerIds: responded };
-    }
-
-    // ── Inquisitor Choice ─────────────────────────────────
-    export function resolveInquisitorChoice(
-        state: GameState,
-        choice: 'self-exchange' | 'examine',
-        targetPlayerId?: string
-    ): GameState {
-        if (!state.pendingAction) throw new Error('Sem ação pendente');
-        const actor = getPlayerById(state, state.pendingAction.sourcePlayerId);
-
-        if (choice === 'self-exchange') {
-            // Treat as InquisitorSelfExchange
-            const updatedAction = { ...state.pendingAction, type: ActionType.InquisitorSelfExchange };
-            return resolveAction({ ...state, pendingAction: updatedAction });
-        }
-
-        // choice === 'examine' - need a target
-        if (!targetPlayerId) throw new Error('Examine requer alvo');
-
-        const target = getPlayerById(state, targetPlayerId);
-        const aliveCards = target.influenceCards
-            .map((c, i) => ({ card: c, index: i }))
-            .filter((x) => !x.card.isRevealed);
-
-        if (aliveCards.length === 0) throw new Error('Alvo sem cartas');
-        const selected = aliveCards[Math.floor(Math.random() * aliveCards.length)];
-
-        return {
-            ...state,
-            phase: GamePhase.AwaitingExamineDecision,
-            pendingAction: {
-                ...state.pendingAction,
-                type: ActionType.Examine,
-                targetPlayerId,
-                examinedCard: selected,
-            },
-            log: [
-                ...state.log,
-                createLogEntry(`${actor.name} examina a mão de ${target.name}.`, 'action'),
-            ],
-        };
-    }
-
-    // ── Completar Seleção de Carta (perder influência) ────────
-    export function selectCardToLose(state: GameState, playerId: string, cardIndex: number): GameState {
-        let newState = loseInfluence(state, playerId, cardIndex);
-
-        if (newState.phase === GamePhase.GameOver) return newState;
-
-        // After losing card from challenge on action, continue to block phase or resolve
-        if (state.phase === GamePhase.AwaitingCardSelection && state.pendingAction) {
-            // Was this the challenger losing a card? (challenge failed, action proceeds)
-            if (playerId !== state.pendingAction.sourcePlayerId) {
-                // Assassinate rule: If challenge failed, skip block phase and resolve
-                if (state.pendingAction.type === ActionType.Assassinate) {
-                    return resolveAction(newState);
-                }
-
-                // Fix for Coup Double Damage: Coup damage is final UNLESS this was just a challenge penalty
-                if (state.pendingAction.type === ActionType.Coup) {
-                    if (state.cardSelectionReason === 'challenge-penalty') {
-                        // If redirection was active, the challenge was for the redirection, Coup stands
-                        if (state.coupRedirectChain.length > 0) {
-                            return resolveAction(newState);
-                        }
-                    }
-                    return advanceTurn({ ...newState, cardSelectionReason: undefined });
-                }
-
-                const canBeBlocked = isActionBlockable(
-                    state.pendingAction.type,
-                    newState.config.enabledCharacters
-                );
-                if (state.cardSelectionReason === 'action-effect') {
-                    return advanceTurn({ ...newState, cardSelectionReason: undefined });
-                }
-
-                if (canBeBlocked) {
-                    return { ...newState, phase: GamePhase.AwaitingBlock, respondedPlayerIds: [] };
-                }
-
-                return resolveAction(newState);
-            }
-
-            // Actor lost a card (challenge succeeded, action fails)
-            if (state.cardSelectionReason === 'challenge-penalty') {
-                // If redirection challenge fails, redirection stands and becomes the action.
-                // We need to allow resolveAction to proceed with the redirect.
-                if (state.coupRedirectChain.length > 0) {
-                    return resolveAction(newState);
-                }
-            }
-            return advanceTurn({ ...newState, cardSelectionReason: undefined });
-        }
-
-        return advanceTurn({ ...newState, cardSelectionReason: undefined });
-    }
-
-    // ── Completar Troca (Exchange) ────────────────────────────
-    export function completeExchange(
-        state: GameState,
-        playerId: string,
-        keptCards: Character[],
-        returnedCards: Character[]
-    ): GameState {
-        const player = getPlayerById(state, playerId);
-        const aliveCount = getAliveInfluence(player).length;
-
-        if (keptCards.length !== aliveCount) {
-            throw new Error(`Deve manter exatamente ${aliveCount} carta(s)`);
-        }
-
-        const newInfluence: InfluenceCard[] = [
-            ...keptCards.map((c) => ({ character: c, isRevealed: false })),
-            ...player.influenceCards.filter((c) => c.isRevealed),
-        ];
-
-        const newDeck = shuffleArray([...state.courtDeck, ...returnedCards]);
-
-        return advanceTurn({
-            ...state,
-            courtDeck: newDeck,
-            drawnCards: [],
-            players: state.players.map((p) =>
-                p.id === playerId ? { ...p, influenceCards: newInfluence } : p
-            ),
-            log: [
-                ...state.log,
-                createLogEntry(`${player.name} completou a troca.`, 'exchange'),
-            ],
-        });
-    }
-
-    // ── Decisão do Inquisitor (Examine) ───────────────────────
-    export function resolveExamine(
-        state: GameState,
-        forceExchange: boolean,
-        targetCardIndex: number
-    ): GameState {
-        if (!state.pendingAction?.targetPlayerId) throw new Error('Sem alvo de examine');
-
-        const target = getPlayerById(state, state.pendingAction.targetPlayerId);
-        const card = target.influenceCards[targetCardIndex];
-
-        if (!card || card.isRevealed) throw new Error('Carta inválida');
-
-        if (forceExchange) {
-            // Force target to exchange the card
-            const newDeck = shuffleArray([...state.courtDeck, card.character]);
-            const newCard = newDeck.pop()!;
-
+        case ActionType.Tax:
+        case ActionType.SpeculatorTax:
             return advanceTurn({
                 ...state,
-                courtDeck: newDeck,
+                players: state.players.map((p) =>
+                    p.id === actor.id ? { ...p, coins: p.coins + 3 } : p
+                ),
+                log: [...state.log, createLogEntry(`${actor.name} cobrou impostos (3 moedas).`, 'action')],
+            });
+
+        case ActionType.BureaucratTax: {
+            if (!action.targetPlayerId) throw new Error('BureaucratTax requer alvo');
+            return advanceTurn({
+                ...state,
                 players: state.players.map((p) => {
-                    if (p.id !== target.id) return p;
-                    return {
-                        ...p,
-                        influenceCards: p.influenceCards.map((c, i) =>
-                            i === targetCardIndex ? { character: newCard, isRevealed: false } : c
-                        ),
-                    };
+                    if (p.id === actor.id) return { ...p, coins: p.coins + 2 }; // +3 -1
+                    if (p.id === action.targetPlayerId) return { ...p, coins: p.coins + 1 };
+                    return p;
                 }),
                 log: [
                     ...state.log,
-                    createLogEntry(`Inquisitor forçou ${target.name} a trocar uma carta.`, 'action'),
+                    createLogEntry(
+                        `${actor.name} taxou e deu 1 moeda para ${getPlayerName(state, action.targetPlayerId)}.`,
+                        'action'
+                    ),
                 ],
             });
         }
 
+        case ActionType.Assassinate: {
+            if (!action.targetPlayerId) throw new Error('Assassinate requer alvo');
+            const newState: GameState = {
+                ...state,
+                players: state.players.map((p) =>
+                    p.id === actor.id ? { ...p } : p
+                ),
+                log: [
+                    ...state.log,
+                    createLogEntry(
+                        `${actor.name} assassinou ${getPlayerName(state, action.targetPlayerId)}!`,
+                        'action'
+                    ),
+                ],
+            };
+
+            const target = getPlayerById(newState, action.targetPlayerId);
+            const targetAlive = getAliveInfluence(target);
+
+            // If target is already eliminated (e.g. lost last card to challenge), just advance
+            if (targetAlive.length === 0) {
+                return advanceTurn(newState);
+            }
+
+            if (targetAlive.length === 1) {
+                const idx = target.influenceCards.findIndex((c) => !c.isRevealed);
+                return advanceTurn(loseInfluence(newState, action.targetPlayerId, idx));
+            }
+
+            return {
+                ...newState,
+                phase: GamePhase.AwaitingCardSelection,
+                respondedPlayerIds: [action.targetPlayerId],
+                cardSelectionReason: 'action-effect',
+            };
+        }
+
+        case ActionType.Steal: {
+            if (!action.targetPlayerId) throw new Error('Steal requer alvo');
+            const target = getPlayerById(state, action.targetPlayerId);
+            const stolen = Math.min(2, target.coins);
+
+            return advanceTurn({
+                ...state,
+                players: state.players.map((p) => {
+                    if (p.id === actor.id) return { ...p, coins: p.coins + stolen };
+                    if (p.id === action.targetPlayerId) return { ...p, coins: p.coins - stolen };
+                    return p;
+                }),
+                log: [
+                    ...state.log,
+                    createLogEntry(
+                        `${actor.name} roubou ${stolen} moeda(s) de ${getPlayerName(state, action.targetPlayerId)}.`,
+                        'action'
+                    ),
+                ],
+            });
+        }
+
+        case ActionType.Exchange: {
+            // Ambassador: return all alive cards to deck, draw same count
+            const aliveCards = getAliveInfluence(actor);
+            const aliveCount = aliveCards.length;
+            const returnedChars = aliveCards.map((c) => c.character);
+
+            // Put alive cards back and shuffle
+            let newDeck = shuffleArray([...state.courtDeck, ...returnedChars]);
+
+            // Draw same number of cards
+            const newCards: Character[] = [];
+            for (let i = 0; i < aliveCount && newDeck.length > 0; i++) {
+                newCards.push(newDeck.pop()!);
+            }
+
+            // Build new influence cards (new drawn + existing revealed)
+            const newInfluence = [
+                ...newCards.map((c) => ({ character: c, isRevealed: false })),
+                ...actor.influenceCards.filter((c) => c.isRevealed),
+            ];
+
+            return advanceTurn({
+                ...state,
+                courtDeck: newDeck,
+                players: state.players.map((p) =>
+                    p.id === actor.id ? { ...p, influenceCards: newInfluence } : p
+                ),
+                log: [
+                    ...state.log,
+                    createLogEntry(`${actor.name} trocou cartas com o baralho (Embaixador).`, 'exchange'),
+                ],
+            });
+        }
+
+        case ActionType.Examine: {
+            // Enter Inquisitor choice phase: examine OR self-exchange
+            return {
+                ...state,
+                phase: GamePhase.AwaitingInquisitorChoice,
+                log: [
+                    ...state.log,
+                    createLogEntry(
+                        `${actor.name} vai usar o poder do Inquisidor.`,
+                        'action'
+                    ),
+                ],
+            };
+        }
+
+
+
+        case ActionType.InquisitorSelfExchange: {
+            // Draw 1 card from deck for self-exchange
+            const newDeck = [...state.courtDeck];
+            const drawn: Character[] = [];
+            if (newDeck.length > 0) drawn.push(newDeck.pop()!);
+
+            return {
+                ...state,
+                courtDeck: newDeck,
+                drawnCards: drawn,
+                phase: GamePhase.AwaitingExchangeSelection,
+                log: [
+                    ...state.log,
+                    createLogEntry(`${actor.name} troca sua própria carta(Inquisidor).`, 'exchange'),
+                ],
+            };
+        }
+
+        case ActionType.SocialistRedistribute: {
+            const alivePlayers = getAlivePlayers(state).filter((p) => p.id !== actor.id);
+            let totalCollected = 0;
+            const updatedPlayers = state.players.map((p) => {
+                if (p.id === actor.id || p.isEliminated) return p;
+                const take = Math.min(1, p.coins);
+                totalCollected += take;
+                return { ...p, coins: p.coins - take };
+            });
+
+            const kept = Math.min(1, totalCollected);
+            const returned = totalCollected - kept;
+
+            return advanceTurn({
+                ...state,
+                players: updatedPlayers.map((p) =>
+                    p.id === actor.id ? { ...p, coins: p.coins + kept } : p
+                ),
+                log: [
+                    ...state.log,
+                    createLogEntry(
+                        `${actor.name} redistribui: coletou ${totalCollected}, ficou com ${kept}.`,
+                        'action'
+                    ),
+                ],
+            });
+        }
+
+        default:
+            return advanceTurn(state);
+    }
+}
+
+// ── Coup Redirect (Bufão) ─────────────────────────────────
+export function declareCoupRedirect(
+    state: GameState,
+    redirectorId: string,
+    newTargetId: string
+): GameState {
+    const redirector = getPlayerById(state, redirectorId);
+    const newTarget = getPlayerById(state, newTargetId);
+
+    const matchSource = state.coupRedirectSourceId || state.pendingAction?.sourcePlayerId || '';
+    if (!matchSource) {
+        console.error('CRITICAL: Missing coup source in declareCoupRedirect');
+        // fallback to prevent crash, but this is bad state
+    }
+
+    return {
+        ...state,
+        phase: GamePhase.AwaitingCoupRedirectChallenge,
+        pendingAction: {
+            type: ActionType.Coup,
+            sourcePlayerId: matchSource,
+            targetPlayerId: newTargetId,
+            claimedCharacter: Character.Jester,
+        },
+        respondedPlayerIds: [],
+        coupRedirectChain: [...state.coupRedirectChain, newTargetId],
+        log: [
+            ...state.log,
+            createLogEntry(
+                `${redirector.name} alega Bufão e redireciona o Golpe para ${newTarget.name} !`,
+                'action'
+            ),
+        ],
+    };
+}
+
+export function passCoupRedirect(state: GameState, playerId: string): GameState {
+    // Player accepts the coup, loses influence
+    const player = getPlayerById(state, playerId);
+    const aliveCards = getAliveInfluence(player);
+
+    const newState: GameState = {
+        ...state,
+        pendingAction: { ...state.pendingAction!, redirectDeclined: true },
+        coupRedirectChain: [],
+        coupRedirectSourceId: null,
+        log: [
+            ...state.log,
+            createLogEntry(`${player.name} aceita o Golpe.`, 'action'),
+        ],
+    };
+
+    if (aliveCards.length === 1) {
+        const idx = player.influenceCards.findIndex((c) => !c.isRevealed);
+        return advanceTurn(loseInfluence(newState, playerId, idx));
+    }
+
+    return {
+        ...newState,
+        phase: GamePhase.AwaitingCardSelection,
+        respondedPlayerIds: [playerId],
+        cardSelectionReason: 'action-effect',
+    };
+}
+
+export function challengeCoupRedirect(state: GameState, challengerId: string): GameState {
+    // The last person in the redirect chain claimed Jester
+    const chain = state.coupRedirectChain;
+    const redirectorId = chain[chain.length - 2]; // The one who redirected
+    const redirector = getPlayerById(state, redirectorId);
+    const challenger = getPlayerById(state, challengerId);
+
+    let newState: GameState = {
+        ...state,
+        log: [
+            ...state.log,
+            createLogEntry(
+                `${challenger.name} desafia o Bufão de ${redirector.name} !`,
+                'challenge'
+            ),
+        ],
+    };
+
+    const redirectorCards = getAliveInfluence(redirector);
+    const jesterCount = redirectorCards.filter((c) => c.character === Character.Jester).length;
+
+    // Count how many times this redirector appears in the chain (excluding the new target at the end)
+    // The chain includes the victims.
+    // [A, B, A, C] -> A redirected to B (index 0), B to A (index 1), A to C (index 2).
+    // Redirector is chain[chain.length - 2] (A).
+    // A appears at 0 and 2. So A has redirected 2 times.
+    const redirectorOccurrences = chain.slice(0, chain.length - 1).filter((id) => id === redirectorId).length;
+
+    const hasEnoughJesters = jesterCount >= redirectorOccurrences;
+
+    if (hasEnoughJesters) {
+        // Challenge fails — challenger loses influence, redirect stands
+        // Reveal and replace ALL required Jesters
+        newState = {
+            ...newState,
+            log: [
+                ...newState.log,
+                createLogEntry(
+                    `${redirector.name} revela ${redirectorOccurrences}x Bufão! ${challenger.name} perde influência.`,
+                    'challenge'
+                ),
+            ],
+        };
+
+        // Replace the required number of Jesters
+        for (let i = 0; i < redirectorOccurrences; i++) {
+            newState = replaceRevealedCard(newState, redirector.id, Character.Jester);
+        }
+
+        const chalAlive = getAliveInfluence(getPlayerById(newState, challengerId));
+        if (chalAlive.length === 1) {
+            const idx = getPlayerById(newState, challengerId).influenceCards.findIndex(
+                (c) => !c.isRevealed
+            );
+            newState = loseInfluence({ ...newState, cardSelectionReason: 'challenge-penalty' }, challengerId, idx);
+            if (newState.phase === GamePhase.GameOver) return newState;
+        } else {
+            // Challenger must choose which card to lose, then redirect continues
+            return {
+                ...newState,
+                phase: GamePhase.AwaitingCardSelection,
+                respondedPlayerIds: [challengerId],
+                cardSelectionReason: 'challenge-penalty',
+            };
+        }
+
+        // After challenger lost card, redirect stands — check new target
+        const newTargetId = chain[chain.length - 1];
+        const newTarget = getPlayerById(newState, newTargetId);
+        if (newTarget.isEliminated) {
+            return advanceTurn({ ...newState, coupRedirectChain: [], coupRedirectSourceId: null });
+        }
+
+        // New target can also try to redirect
+        if (state.config.enabledCharacters.includes(Character.Jester)) {
+            return {
+                ...newState,
+                phase: GamePhase.AwaitingCoupRedirect,
+            };
+        }
+
+        // No more redirects, target loses influence
+        const targetAlive = getAliveInfluence(newTarget);
+        if (targetAlive.length === 1) {
+            const idx = newTarget.influenceCards.findIndex((c) => !c.isRevealed);
+            return advanceTurn(loseInfluence({ ...newState, coupRedirectChain: [], coupRedirectSourceId: null, cardSelectionReason: 'action-effect' }, newTargetId, idx));
+        }
+        return {
+            ...newState,
+            coupRedirectChain: [],
+            coupRedirectSourceId: null,
+            phase: GamePhase.AwaitingCardSelection,
+            respondedPlayerIds: [newTargetId],
+        };
+    }
+
+    // Challenge succeeds — redirector loses BOTH cards (double loss)
+    newState = {
+        ...newState,
+        log: [
+            ...newState.log,
+            createLogEntry(
+                `${redirector.name} não tem ${redirectorOccurrences}x Bufão! Perde DUAS cartas(perda dupla)!`,
+                'challenge'
+            ),
+        ],
+    };
+
+    // Lose all alive cards
+    const aliveCards = getAliveInfluence(getPlayerById(newState, redirectorId));
+    for (const card of aliveCards) {
+        // Find index of first unrevealed card
+        const idx = getPlayerById(newState, redirectorId).influenceCards.findIndex(
+            (c) => !c.isRevealed
+        );
+        if (idx !== -1) {
+            newState = loseInfluence(newState, redirectorId, idx);
+        }
+        if (newState.phase === GamePhase.GameOver) return newState;
+    }
+
+    return advanceTurn({ ...newState, coupRedirectChain: [], coupRedirectSourceId: null });
+}
+
+export function passCoupRedirectChallenge(state: GameState, playerId: string): GameState {
+    const responded = [...state.respondedPlayerIds, playerId];
+    const alive = getAlivePlayers(state).filter(
+        (p) => {
+            const chain = state.coupRedirectChain;
+            const redirectorId = chain[chain.length - 2];
+            return p.id !== redirectorId; // Everyone except the redirector can challenge
+        }
+    );
+
+    if (responded.length >= alive.length) {
+        // No one challenged, redirect succeeds
+        const chain = state.coupRedirectChain;
+        const newTargetId = chain[chain.length - 1];
+        const newTarget = getPlayerById(state, newTargetId);
+
+        if (newTarget.isEliminated) {
+            return advanceTurn({ ...state, coupRedirectChain: [], coupRedirectSourceId: null });
+        }
+
+        // New target can also try to redirect
+        if (state.config.enabledCharacters.includes(Character.Jester)) {
+            return {
+                ...state,
+                phase: GamePhase.AwaitingCoupRedirect,
+                respondedPlayerIds: [],
+            };
+        }
+
+        // Resolve coup on new target
+        const targetAlive = getAliveInfluence(newTarget);
+        if (targetAlive.length === 1) {
+            const idx = newTarget.influenceCards.findIndex((c) => !c.isRevealed);
+            return advanceTurn(loseInfluence({ ...state, coupRedirectChain: [], coupRedirectSourceId: null }, newTargetId, idx));
+        }
+        return {
+            ...state,
+            coupRedirectChain: [],
+            coupRedirectSourceId: null,
+            phase: GamePhase.AwaitingCardSelection,
+            respondedPlayerIds: [newTargetId],
+        };
+    }
+
+    return { ...state, respondedPlayerIds: responded };
+}
+
+// ── Inquisitor Choice ─────────────────────────────────
+export function resolveInquisitorChoice(
+    state: GameState,
+    choice: 'self-exchange' | 'examine',
+    targetPlayerId?: string
+): GameState {
+    if (!state.pendingAction) throw new Error('Sem ação pendente');
+    const actor = getPlayerById(state, state.pendingAction.sourcePlayerId);
+
+    if (choice === 'self-exchange') {
+        // Treat as InquisitorSelfExchange
+        const updatedAction = { ...state.pendingAction, type: ActionType.InquisitorSelfExchange };
+        return resolveAction({ ...state, pendingAction: updatedAction });
+    }
+
+    // choice === 'examine' - need a target
+    if (!targetPlayerId) throw new Error('Examine requer alvo');
+
+    const target = getPlayerById(state, targetPlayerId);
+    const aliveCards = target.influenceCards
+        .map((c, i) => ({ card: c, index: i }))
+        .filter((x) => !x.card.isRevealed);
+
+    if (aliveCards.length === 0) throw new Error('Alvo sem cartas');
+    const selected = aliveCards[Math.floor(Math.random() * aliveCards.length)];
+
+    return {
+        ...state,
+        phase: GamePhase.AwaitingExamineDecision,
+        pendingAction: {
+            ...state.pendingAction,
+            type: ActionType.Examine,
+            targetPlayerId,
+            examinedCard: selected,
+        },
+        log: [
+            ...state.log,
+            createLogEntry(`${actor.name} examina a mão de ${target.name}.`, 'action'),
+        ],
+    };
+}
+
+// ── Completar Seleção de Carta (perder influência) ────────
+export function selectCardToLose(state: GameState, playerId: string, cardIndex: number): GameState {
+    let newState = loseInfluence(state, playerId, cardIndex);
+
+    if (newState.phase === GamePhase.GameOver) return newState;
+
+    // After losing card from challenge on action, continue to block phase or resolve
+    if (state.phase === GamePhase.AwaitingCardSelection && state.pendingAction) {
+        // Was this the challenger losing a card? (challenge failed, action proceeds)
+        if (playerId !== state.pendingAction.sourcePlayerId) {
+            // Assassinate rule: If challenge failed, skip block phase and resolve
+            if (state.pendingAction.type === ActionType.Assassinate) {
+                return resolveAction(newState);
+            }
+
+            // Fix for Coup Double Damage: Coup damage is final UNLESS this was just a challenge penalty
+            if (state.pendingAction.type === ActionType.Coup) {
+                if (state.cardSelectionReason === 'challenge-penalty') {
+                    // If redirection was active, the challenge was for the redirection, Coup stands
+                    if (state.coupRedirectChain.length > 0) {
+                        return resolveAction(newState);
+                    }
+                }
+                return advanceTurn({ ...newState, cardSelectionReason: undefined });
+            }
+
+            const canBeBlocked = isActionBlockable(
+                state.pendingAction.type,
+                newState.config.enabledCharacters
+            );
+            if (state.cardSelectionReason === 'action-effect') {
+                return advanceTurn({ ...newState, cardSelectionReason: undefined });
+            }
+
+            if (canBeBlocked) {
+                return { ...newState, phase: GamePhase.AwaitingBlock, respondedPlayerIds: [] };
+            }
+
+            return resolveAction(newState);
+        }
+
+        // Actor lost a card (challenge succeeded, action fails)
+        if (state.cardSelectionReason === 'challenge-penalty') {
+            // If redirection challenge fails, redirection stands and becomes the action.
+            // We need to allow resolveAction to proceed with the redirect.
+            if (state.coupRedirectChain.length > 0) {
+                return resolveAction(newState);
+            }
+        }
+        return advanceTurn({ ...newState, cardSelectionReason: undefined });
+    }
+
+    return advanceTurn({ ...newState, cardSelectionReason: undefined });
+}
+
+// ── Completar Troca (Exchange) ────────────────────────────
+export function completeExchange(
+    state: GameState,
+    playerId: string,
+    keptCards: Character[],
+    returnedCards: Character[]
+): GameState {
+    const player = getPlayerById(state, playerId);
+    const aliveCount = getAliveInfluence(player).length;
+
+    if (keptCards.length !== aliveCount) {
+        throw new Error(`Deve manter exatamente ${aliveCount} carta(s)`);
+    }
+
+    const newInfluence: InfluenceCard[] = [
+        ...keptCards.map((c) => ({ character: c, isRevealed: false })),
+        ...player.influenceCards.filter((c) => c.isRevealed),
+    ];
+
+    const newDeck = shuffleArray([...state.courtDeck, ...returnedCards]);
+
+    return advanceTurn({
+        ...state,
+        courtDeck: newDeck,
+        drawnCards: [],
+        players: state.players.map((p) =>
+            p.id === playerId ? { ...p, influenceCards: newInfluence } : p
+        ),
+        log: [
+            ...state.log,
+            createLogEntry(`${player.name} completou a troca.`, 'exchange'),
+        ],
+    });
+}
+
+// ── Decisão do Inquisitor (Examine) ───────────────────────
+export function resolveExamine(
+    state: GameState,
+    forceExchange: boolean,
+    targetCardIndex: number
+): GameState {
+    if (!state.pendingAction?.targetPlayerId) throw new Error('Sem alvo de examine');
+
+    const target = getPlayerById(state, state.pendingAction.targetPlayerId);
+    const card = target.influenceCards[targetCardIndex];
+
+    if (!card || card.isRevealed) throw new Error('Carta inválida');
+
+    if (forceExchange) {
+        // Force target to exchange the card
+        const newDeck = shuffleArray([...state.courtDeck, card.character]);
+        const newCard = newDeck.pop()!;
+
         return advanceTurn({
             ...state,
+            courtDeck: newDeck,
+            players: state.players.map((p) => {
+                if (p.id !== target.id) return p;
+                return {
+                    ...p,
+                    influenceCards: p.influenceCards.map((c, i) =>
+                        i === targetCardIndex ? { character: newCard, isRevealed: false } : c
+                    ),
+                };
+            }),
             log: [
                 ...state.log,
-                createLogEntry(`Inquisitor permite que ${target.name} mantenha a carta.`, 'action'),
+                createLogEntry(`Inquisitor forçou ${target.name} a trocar uma carta.`, 'action'),
             ],
         });
     }
 
-    // ── Avançar Turno ─────────────────────────────────────────
-    export function advanceTurn(state: GameState): GameState {
-        if (state.phase === GamePhase.GameOver) return state;
+    return advanceTurn({
+        ...state,
+        log: [
+            ...state.log,
+            createLogEntry(`Inquisitor permite que ${target.name} mantenha a carta.`, 'action'),
+        ],
+    });
+}
 
-        const nextIdx = nextAlivePlayerIndex(state);
+// ── Avançar Turno ─────────────────────────────────────────
+export function advanceTurn(state: GameState): GameState {
+    if (state.phase === GamePhase.GameOver) return state;
 
-        return {
-            ...state,
-            currentPlayerIndex: nextIdx,
-            phase: GamePhase.AwaitingAction,
-            pendingAction: null,
-            pendingBlock: null,
-            respondedPlayerIds: [],
-            drawnCards: [],
-            turnNumber: state.turnNumber + 1,
-            coupRedirectChain: [],
-            coupRedirectSourceId: null,
-            cardSelectionReason: undefined,
-        };
-    }
+    const nextIdx = nextAlivePlayerIndex(state);
 
-    // ── Re-export helpers ─────────────────────────────────────
-    export { getAliveInfluence, getAlivePlayers, getPlayerById };
+    return {
+        ...state,
+        currentPlayerIndex: nextIdx,
+        phase: GamePhase.AwaitingAction,
+        pendingAction: null,
+        pendingBlock: null,
+        respondedPlayerIds: [],
+        drawnCards: [],
+        turnNumber: state.turnNumber + 1,
+        coupRedirectChain: [],
+        coupRedirectSourceId: null,
+        cardSelectionReason: undefined,
+    };
+}
+
+// ── Re-export helpers ─────────────────────────────────────
+export { getAliveInfluence, getAlivePlayers, getPlayerById };

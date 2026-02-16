@@ -109,7 +109,7 @@ export default function GameScene({ gameState }: GameSceneProps) {
                                 card={card}
                                 position={cardPositions[cardIdx]?.position ?? new THREE.Vector3()}
                                 rotation={cardPositions[cardIdx]?.rotation ?? new THREE.Euler()}
-                                showFace={player.isHuman || card.isRevealed}
+                                showFace={idx === 0 || card.isRevealed}
                             />
                         ))}
 
