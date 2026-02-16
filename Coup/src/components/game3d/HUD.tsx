@@ -172,21 +172,28 @@ export default function HUD({
             </div>
 
             {/* Game log — right side */}
-            <div className="absolute right-4 top-16 w-64 pointer-events-auto">
+            <div className="absolute right-4 top-16 w-96 pointer-events-auto">
                 <div className="bg-black/60 backdrop-blur-md rounded-xl border border-gray-700/30 overflow-hidden">
-                    <div className="px-3 py-1.5 border-b border-gray-700/30">
-                        <span className="text-[10px] text-amber-300/50 uppercase tracking-wider font-bold">Log</span>
+                    <div className="px-3 py-1.5 border-b border-gray-700/30 bg-black/40">
+                        <span className="text-[10px] text-amber-300/50 uppercase tracking-wider font-bold">Registro da Partida</span>
                     </div>
-                    <div className="max-h-44 overflow-y-auto p-2 space-y-1">
-                        {gameState.log.slice(-12).map((entry) => (
+                    <div
+                        ref={(el) => {
+                            if (el) {
+                                el.scrollTop = el.scrollHeight;
+                            }
+                        }}
+                        className="max-h-80 overflow-y-auto p-2 space-y-1 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent"
+                    >
+                        {gameState.log.map((entry) => (
                             <p
                                 key={entry.id}
-                                className={`text-[11px] leading-snug ${entry.type === 'system' ? 'text-amber-400/70' :
+                                className={`text-[12px] leading-snug ${entry.type === 'system' ? 'text-amber-400/70' :
                                     entry.type === 'challenge' ? 'text-orange-400/70' :
                                         entry.type === 'block' ? 'text-purple-400/70' :
                                             entry.type === 'elimination' ? 'text-red-400/70' :
                                                 entry.type === 'exchange' ? 'text-emerald-400/70' :
-                                                    'text-gray-400/70'
+                                                    'text-gray-300/80'
                                     }`}
                             >
                                 {entry.message}
