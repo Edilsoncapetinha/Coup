@@ -128,17 +128,30 @@ export default function TurnTimerWrapper({
 
     const resetKey = `${gameState.turnNumber}-${gameState.phase}-${gameState.pendingAction?.type || ''}-${gameState.coupRedirectChain.length}`;
 
-    // If it's NOT my responsibility, onTimeout should be no-op to avoid double submission or errors.
-    const safeOnTimeout = isActive ? onTimeout : () => { };
+    // Improved timeout handler with jitter to prevent race conditions in multiplayer
+    const handleTimeout = () => {
+        if (!isActive) return;
 
-    // Visual: Always show if we are in a timed phase.
-    // If it's NOT my responsibility, I still see the timer but it does nothing when it ends for me.
+        // If it's a reaction (Pass Challenge, Pass Block), add random delay 0-1.5s
+        // This prevents all clients from sending "Pass" at the exact same millisecond
+        if (phase !== GamePhase.AwaitingAction) {
+            const jitterMs = Math.random() * 1500;
+            setTimeout(() => {
+                // Double check if still valid (though closure captures state)
+                // We rely on server to reject stale actions if phase changed
+                onTimeout();
+            }, jitterMs);
+        } else {
+            // Active turn timeout happens effectively immediately
+            onTimeout();
+        }
+    };
 
     return (
         <div className="w-48">
             <TurnTimer
                 duration={DURATION}
-                onTimeout={safeOnTimeout}
+                onTimeout={handleTimeout}
                 isActive={true}
                 resetKey={resetKey}
             />
