@@ -60,11 +60,25 @@ export default function TurnTimerWrapper({
         gameState.pendingAction?.sourcePlayerId !== humanPlayer.id
     ) {
         // Opportunity to Block (or Pass)
-        isActive = true;
-        onTimeout = () => {
-            console.log("Timer expired: Auto-Pass Block");
-            onPassBlock(humanPlayer.id);
-        };
+        // Rule: If Assassinate/Steal, only target can block.
+        // If Foreign Aid, anyone can block.
+        const action = gameState.pendingAction;
+        const isTargetedBlockable = action?.type === ActionType.Assassinate || action?.type === ActionType.Steal || action?.type === ActionType.BureaucratTax;
+
+        let canBlock = false;
+        if (action?.type === ActionType.ForeignAid) {
+            canBlock = true;
+        } else if (isTargetedBlockable && action?.targetPlayerId === humanPlayer.id) {
+            canBlock = true;
+        }
+
+        if (canBlock) {
+            isActive = true;
+            onTimeout = () => {
+                console.log("Timer expired: Auto-Pass Block");
+                onPassBlock(humanPlayer.id);
+            };
+        }
     } else if (
         phase === GamePhase.AwaitingChallengeOnBlock &&
         gameState.pendingAction?.sourcePlayerId === humanPlayer.id

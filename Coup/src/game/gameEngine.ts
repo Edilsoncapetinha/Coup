@@ -464,6 +464,15 @@ export function declareBlock(
 ): GameState {
     if (!state.pendingAction) throw new Error('Sem ação pendente para bloquear');
 
+    // Rule change: For targeted actions (Assassinate, Steal), only the target can block.
+    // Foreign Aid can be blocked by anyone (Duke).
+    const action = state.pendingAction;
+    if (action.targetPlayerId && action.type !== ActionType.ForeignAid) {
+        if (blockerId !== action.targetPlayerId) {
+            throw new Error('Apenas o alvo pode bloquear esta ação.');
+        }
+    }
+
     const blocker = getPlayerById(state, blockerId);
 
     return {
@@ -478,7 +487,7 @@ export function declareBlock(
         log: [
             ...state.log,
             createLogEntry(
-                `${blocker.name} bloqueia com ${claimedCharacter} !`,
+                `${blocker.name} bloqueia com ${claimedCharacter}!`,
                 'block'
             ),
         ],
@@ -488,11 +497,26 @@ export function declareBlock(
 // ── Passar Bloqueio ───────────────────────────────────────
 export function passBlock(state: GameState, playerId: string): GameState {
     const responded = [...state.respondedPlayerIds, playerId];
-    const alive = getAlivePlayers(state).filter(
-        (p) => p.id !== state.pendingAction?.sourcePlayerId
-    );
 
-    if (responded.length >= alive.length) {
+    // Determine who needs to respond
+    const action = state.pendingAction;
+    let waitingFor: string[] = [];
+
+    if (action?.targetPlayerId && action.type !== ActionType.ForeignAid) {
+        // Targeted blockable actions: Only wait for the target
+        waitingFor = [action.targetPlayerId];
+    } else {
+        // Foreign Aid: Wait for everyone else
+        waitingFor = getAlivePlayers(state)
+            .filter((p) => p.id !== state.pendingAction?.sourcePlayerId)
+            .map((p) => p.id);
+    }
+
+    // Check if everyone required has responded
+    // We check if every required player ID is in the responded list
+    const allResponded = waitingFor.every(id => responded.includes(id));
+
+    if (allResponded) {
         return resolveAction(state);
     }
 

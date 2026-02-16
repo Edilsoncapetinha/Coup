@@ -87,11 +87,47 @@ export default function HUD({
     const isHumanTurn = humanPlayer ? currentPlayer.id === humanPlayer.id : false;
     const phase = gameState.phase;
 
-    const humanNeedsToRespond =
-        humanPlayer &&
-        !humanPlayer.isEliminated &&
-        !gameState.respondedPlayerIds.includes(humanPlayer.id) &&
-        humanPlayer.id !== gameState.pendingAction?.sourcePlayerId;
+    const action = gameState.pendingAction;
+    let humanNeedsToRespond = false;
+
+    if (humanPlayer && !humanPlayer.isEliminated && !gameState.respondedPlayerIds.includes(humanPlayer.id)) {
+        if (phase === GamePhase.AwaitingChallengeOnAction) {
+            // Challenge phase: Everyone (except actor) can challenge
+            if (humanPlayer.id !== action?.sourcePlayerId) {
+                humanNeedsToRespond = true;
+            }
+        } else if (phase === GamePhase.AwaitingBlock) {
+            // Block phase:
+            // - Foreign Aid: Everyone (except actor) can block (Duke)
+            // - Assassinate/Steal: Only target can block
+            if (action?.type === ActionType.ForeignAid) {
+                if (humanPlayer.id !== action.sourcePlayerId) {
+                    humanNeedsToRespond = true;
+                }
+            } else if (action?.targetPlayerId) {
+                if (humanPlayer.id === action.targetPlayerId) {
+                    humanNeedsToRespond = true;
+                }
+            }
+        } else if (phase === GamePhase.AwaitingChallengeOnBlock) {
+            // Challenge Block: Everyone (except blocker) can challenge
+            if (gameState.pendingBlock && humanPlayer.id !== gameState.pendingBlock.blockingPlayerId) {
+                humanNeedsToRespond = true;
+            }
+        } else if (phase === GamePhase.AwaitingCoupRedirect) {
+            // Redirect: Only target
+            if (gameState.coupRedirectChain.length > 0 &&
+                gameState.coupRedirectChain[gameState.coupRedirectChain.length - 1] === humanPlayer.id) {
+                humanNeedsToRespond = true;
+            }
+        } else if (phase === GamePhase.AwaitingCoupRedirectChallenge) {
+            // Challenge Redirect: Everyone (except redirector)
+            if (gameState.coupRedirectChain.length >= 2 &&
+                gameState.coupRedirectChain[gameState.coupRedirectChain.length - 2] !== humanPlayer.id) {
+                humanNeedsToRespond = true;
+            }
+        }
+    }
 
     return (
         <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10 }}>
