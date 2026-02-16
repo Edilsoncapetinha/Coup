@@ -516,7 +516,16 @@ export function passBlock(state: GameState, playerId: string): GameState {
     // We check if every required player ID is in the responded list
     const allResponded = waitingFor.every(id => responded.includes(id));
 
+    console.log('[DEBUG] passBlock', {
+        playerId,
+        actionType: state.pendingAction?.type,
+        waitingFor,
+        responded,
+        allResponded
+    });
+
     if (allResponded) {
+        console.log('[DEBUG] All responded, resolving action');
         return resolveAction(state);
     }
 
