@@ -1,5 +1,5 @@
 import { Character, type GameState } from '../../game/types';
-import { getCharactersThatBlock } from '../../game/characters';
+import { getCharactersThatBlock, isBlockableOnlyByTarget } from '../../game/characters';
 import { getAlivePlayers, getPlayerById } from '../../game/gameEngine';
 import { CHAR_EMOJI, CHAR_NAME, CHAR_IMAGE } from './PlayerSlot';
 
@@ -43,7 +43,8 @@ export default function ChallengeBlockModal({
     }
 
     const blockableChars =
-        mode === 'block' && action
+        mode === 'block' && action &&
+            (!isBlockableOnlyByTarget(action.type) || (gameState.players.find(p => p.isHuman)?.id === action.targetPlayerId))
             ? getCharactersThatBlock(action.type, gameState.config.enabledCharacters)
             : [];
 

@@ -16,7 +16,7 @@ import {
     getAliveInfluence,
     getPlayerById,
 } from './gameEngine';
-import { getCharactersThatBlock, CHARACTER_DEFINITIONS } from './characters';
+import { getCharactersThatBlock, CHARACTER_DEFINITIONS, isBlockableOnlyByTarget } from './characters';
 
 // ── Delay simulado para parecer "pensando" ────────────────
 export function getBotDelay(difficulty: BotDifficulty): number {
@@ -268,6 +268,13 @@ export function decideBotBlock(
 
     const blockers = getCharactersThatBlock(action.type, state.config.enabledCharacters);
     if (blockers.length === 0) return { shouldBlock: false };
+
+    // Rule Fix: Check if this action is only blockable by its target
+    if (isBlockableOnlyByTarget(action.type)) {
+        if (botPlayerId !== action.targetPlayerId) {
+            return { shouldBlock: false };
+        }
+    }
 
     // Check if bot actually has a blocking character
     const hasBlocker = blockers.find((b) => botCards.includes(b));

@@ -41,6 +41,7 @@ import {
     getBotDelay,
 } from '../game/botAI';
 import { BotDifficulty } from '../game/types';
+import { isBlockableOnlyByTarget } from '../game/characters';
 
 // ── Actions do Reducer ────────────────────────────────────
 type GameReducerAction =
@@ -382,11 +383,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
         // Handle bot responses to block opportunities
         if (gameState.phase === GamePhase.AwaitingBlock && gameState.pendingAction) {
+            const actionType = gameState.pendingAction.type;
+            const targetOnly = isBlockableOnlyByTarget(actionType);
+
             const botsToRespond = getAlivePlayers(gameState).filter(
                 (p) =>
                     !p.isHuman &&
                     p.id !== gameState.pendingAction?.sourcePlayerId &&
-                    !gameState.respondedPlayerIds.includes(p.id)
+                    !gameState.respondedPlayerIds.includes(p.id) &&
+                    (!targetOnly || p.id === gameState.pendingAction?.targetPlayerId)
             );
 
             if (botsToRespond.length > 0) {
@@ -420,9 +425,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
                         // Accept the block
                         const newState = {
                             ...gameState,
-                            phase: GamePhase.AwaitingAction as GamePhase,
+                            phase: GamePhase.AwaitingAction,
                             pendingAction: null,
                             pendingBlock: null,
+                            respondedPlayerIds: [],
                             currentPlayerIndex:
                                 (gameState.currentPlayerIndex + 1) % gameState.players.length,
                             turnNumber: gameState.turnNumber + 1,

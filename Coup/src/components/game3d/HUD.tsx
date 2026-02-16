@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { GamePhase, ActionType, Character, type GameState, type GameAction } from '../../game/types';
 import { getAlivePlayers, getAliveInfluence, getPlayerById } from '../../game/gameEngine';
-import { CHARACTER_DEFINITIONS, getCharactersThatBlock } from '../../game/characters';
+import { CHARACTER_DEFINITIONS, getCharactersThatBlock, isBlockableOnlyByTarget } from '../../game/characters';
 import { CHAR_IMAGE } from '../game/PlayerSlot';
 import TurnTimerWrapper from './TurnTimerWrapper';
 
@@ -92,6 +92,13 @@ export default function HUD({
         !humanPlayer.isEliminated &&
         !gameState.respondedPlayerIds.includes(humanPlayer.id) &&
         humanPlayer.id !== gameState.pendingAction?.sourcePlayerId;
+
+    const canHumanBlock = (
+        humanPlayer &&
+        gameState.pendingAction &&
+        (!isBlockableOnlyByTarget(gameState.pendingAction.type) ||
+            gameState.pendingAction.targetPlayerId === humanPlayer.id)
+    );
 
     return (
         <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10 }}>
@@ -222,10 +229,10 @@ export default function HUD({
                     )}
 
                     {/* Block opportunity */}
-                    {phase === GamePhase.AwaitingBlock && humanNeedsToRespond && humanPlayer && gameState.pendingAction && (
+                    {phase === GamePhase.AwaitingBlock && humanNeedsToRespond && canHumanBlock && (
                         <BlockBar
                             gameState={gameState}
-                            humanId={humanPlayer.id}
+                            humanId={humanPlayer!.id}
                             onBlock={onBlock}
                             onPass={onPassBlock}
                         />

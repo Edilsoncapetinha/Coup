@@ -1,5 +1,6 @@
 import { GamePhase, ActionType, type GameState, type GameAction } from '../../game/types';
 import { getAlivePlayers } from '../../game/gameEngine';
+import { isBlockableOnlyByTarget } from '../../game/characters';
 import TurnTimer from '../game/TurnTimer';
 
 // Helper component to isolate timer logic
@@ -59,12 +60,18 @@ export default function TurnTimerWrapper({
         !gameState.respondedPlayerIds.includes(humanPlayer.id) &&
         gameState.pendingAction?.sourcePlayerId !== humanPlayer.id
     ) {
-        // Opportunity to Block (or Pass)
-        isActive = true;
-        onTimeout = () => {
-            console.log("Timer expired: Auto-Pass Block");
-            onPassBlock(humanPlayer.id);
-        };
+        // Only activate timer if human can actually block (is the target for target-only actions)
+        const actionType = gameState.pendingAction?.type;
+        const targetOnly = actionType ? isBlockableOnlyByTarget(actionType) : false;
+        const canBlock = !targetOnly || gameState.pendingAction?.targetPlayerId === humanPlayer.id;
+
+        if (canBlock) {
+            isActive = true;
+            onTimeout = () => {
+                console.log("Timer expired: Auto-Pass Block");
+                onPassBlock(humanPlayer.id);
+            };
+        }
     } else if (
         phase === GamePhase.AwaitingChallengeOnBlock &&
         gameState.pendingAction?.sourcePlayerId === humanPlayer.id

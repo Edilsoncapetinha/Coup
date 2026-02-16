@@ -176,6 +176,10 @@ export function isActionBlockable(actionType: ActionType, enabledCharacters: Cha
     return getCharactersThatBlock(actionType, enabledCharacters).length > 0;
 }
 
+export function isBlockableOnlyByTarget(actionType: ActionType): boolean {
+    return [ActionType.Steal, ActionType.Assassinate].includes(actionType);
+}
+
 export function getActionCost(actionType: ActionType): number {
     const generalAction = GENERAL_ACTIONS.find((a) => a.type === actionType);
     if (generalAction) return generalAction.cost;

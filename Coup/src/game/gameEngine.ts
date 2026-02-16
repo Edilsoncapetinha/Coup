@@ -16,7 +16,7 @@ import {
     ASSASSINATE_COST,
     FORCED_COUP_THRESHOLD,
 } from './types';
-import { isActionChallengeable, isActionBlockable, CHARACTER_DEFINITIONS } from './characters';
+import { isActionChallengeable, isActionBlockable, isBlockableOnlyByTarget, CHARACTER_DEFINITIONS } from './characters';
 
 // ── Helpers ───────────────────────────────────────────────
 let logIdCounter = 0;
@@ -464,6 +464,20 @@ export function declareBlock(
 ): GameState {
     if (!state.pendingAction) throw new Error('Sem ação pendente para bloquear');
 
+    // Rule Fix: Validate blocking scope
+    // Contessa can only block Assassination if she is the target
+    if (state.pendingAction.type === ActionType.Assassinate) {
+        if (state.pendingAction.targetPlayerId && blockerId !== state.pendingAction.targetPlayerId) {
+            throw new Error('Apenas o alvo pode bloquear Assassinato');
+        }
+    }
+    // Captain/Ambassador can only block Steal if they are the target
+    if (state.pendingAction.type === ActionType.Steal) {
+        if (state.pendingAction.targetPlayerId && blockerId !== state.pendingAction.targetPlayerId) {
+            throw new Error('Apenas o alvo pode bloquear Roubo');
+        }
+    }
+
     const blocker = getPlayerById(state, blockerId);
 
     return {
@@ -488,11 +502,21 @@ export function declareBlock(
 // ── Passar Bloqueio ───────────────────────────────────────
 export function passBlock(state: GameState, playerId: string): GameState {
     const responded = [...state.respondedPlayerIds, playerId];
-    const alive = getAlivePlayers(state).filter(
-        (p) => p.id !== state.pendingAction?.sourcePlayerId
-    );
 
-    if (responded.length >= alive.length) {
+    // For target-only blockable actions (Steal, Assassinate), only the target needs to respond
+    const actionType = state.pendingAction?.type;
+    let potentialBlockers: ReturnType<typeof getAlivePlayers>;
+    if (actionType && isBlockableOnlyByTarget(actionType) && state.pendingAction?.targetPlayerId) {
+        potentialBlockers = getAlivePlayers(state).filter(
+            (p) => p.id === state.pendingAction?.targetPlayerId
+        );
+    } else {
+        potentialBlockers = getAlivePlayers(state).filter(
+            (p) => p.id !== state.pendingAction?.sourcePlayerId
+        );
+    }
+
+    if (responded.length >= potentialBlockers.length) {
         return resolveAction(state);
     }
 
@@ -570,13 +594,22 @@ export function challengeBlock(state: GameState, challengerId: string): GameStat
         );
         newState = loseInfluence(newState, blocker.id, idx);
         if (newState.phase === GamePhase.GameOver) return newState;
+
+        // Blocker lost their last card from failed block challenge.
+        // For Assassinate: blocker already lost a card, don't make target lose another.
+        if (state.pendingAction?.type === ActionType.Assassinate) {
+            return advanceTurn(newState);
+        }
+
         return resolveAction(newState);
     }
 
+    // Blocker has 2+ cards, needs to choose which to lose
     return {
         ...newState,
         phase: GamePhase.AwaitingCardSelection,
         respondedPlayerIds: [blocker.id],
+        cardSelectionReason: 'challenge-penalty',
     };
 }
 
@@ -1154,8 +1187,21 @@ export function selectCardToLose(state: GameState, playerId: string, cardIndex: 
     if (state.phase === GamePhase.AwaitingCardSelection && state.pendingAction) {
         // Was this the challenger losing a card? (challenge failed, action proceeds)
         if (playerId !== state.pendingAction.sourcePlayerId) {
-            // Assassinate rule: If challenge failed, skip block phase and resolve
+            // If this was an action-effect (e.g. target choosing card to lose from resolved action),
+            // just advance the turn — the action already resolved.
+            if (state.cardSelectionReason === 'action-effect') {
+                return advanceTurn({ ...newState, cardSelectionReason: undefined });
+            }
+
+            // Assassinate rule:
             if (state.pendingAction.type === ActionType.Assassinate) {
+                // If this was a challenge penalty from a block (blocker lied),
+                // don't resolve the assassination (only 1 card lost total).
+                if (state.cardSelectionReason === 'challenge-penalty' && state.pendingBlock) {
+                    return advanceTurn({ ...newState, cardSelectionReason: undefined });
+                }
+                // Otherwise (challenge on action where actor had assassin),
+                // resolve the action (challenger loses 1 for challenge, target loses 1 for assassination).
                 return resolveAction(newState);
             }
 
@@ -1174,9 +1220,6 @@ export function selectCardToLose(state: GameState, playerId: string, cardIndex: 
                 state.pendingAction.type,
                 newState.config.enabledCharacters
             );
-            if (state.cardSelectionReason === 'action-effect') {
-                return advanceTurn({ ...newState, cardSelectionReason: undefined });
-            }
 
             if (canBeBlocked) {
                 return { ...newState, phase: GamePhase.AwaitingBlock, respondedPlayerIds: [] };
