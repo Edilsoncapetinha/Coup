@@ -99,7 +99,7 @@ function createCardFrontTexture(character: Character, isRevealed: boolean): THRE
     canvas.height = 384;
     const ctx = canvas.getContext('2d')!;
 
-    const baseColor = isRevealed ? '#331111' : CHAR_COLORS[character];
+    const baseColor = isRevealed ? '#331111' : (CHAR_COLORS[character] ?? '#333');
 
     // Background
     ctx.fillStyle = baseColor;
@@ -120,7 +120,7 @@ function createCardFrontTexture(character: Character, isRevealed: boolean): THRE
     ctx.font = 'bold 80px serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(CHAR_SYMBOLS[character], 128, 160);
+    ctx.fillText(CHAR_SYMBOLS[character] ?? '?', 128, 160);
 
     // Character name
     ctx.fillStyle = isRevealed ? '#553333' : '#ffffffcc';

@@ -39,7 +39,8 @@ export default function PlayerModel({
         return alive?.character ?? Character.Duke;
     }, [player.influenceCards]);
 
-    const style = CHAR_STYLES[primaryChar];
+    const DEFAULT_STYLE = { bodyColor: '#444', accent: '#888' };
+    const style = CHAR_STYLES[primaryChar] ?? DEFAULT_STYLE;
 
     // Idle breathing animation
     useFrame((state) => {
