@@ -32,6 +32,38 @@ if (isProduction) {
 
 const rooms = {};
 
+/**
+ * Filter game state so each client only sees their own hidden cards.
+ * Opponents' unrevealed cards have character replaced with 'hidden'.
+ * drawnCards only visible to the acting player.
+ */
+function filterStateForPlayer(state, socketId) {
+    const isActingPlayer = state.pendingAction?.sourcePlayerId === socketId;
+
+    return {
+        ...state,
+        // Hide court deck from clients
+        courtDeck: [],
+        // Only the acting player sees drawnCards
+        drawnCards: isActingPlayer ? state.drawnCards : [],
+        // Filter each player's cards
+        players: state.players.map(player => {
+            if (player.id === socketId) {
+                // This is the local player — show all their cards
+                return player;
+            }
+            // For opponents — hide unrevealed card characters
+            return {
+                ...player,
+                influenceCards: player.influenceCards.map(card => {
+                    if (card.isRevealed) return card; // Revealed cards are public
+                    return { ...card, character: 'hidden' };
+                })
+            };
+        })
+    };
+}
+
 const generateRoomCode = () => {
     return Math.floor(1000 + Math.random() * 9000).toString();
 };
@@ -70,9 +102,10 @@ io.on('connection', (socket) => {
             io.to(code).emit('update_player_list', rooms[code].players);
             socket.emit('room_joined', code);
 
-            // If game state exists, sync it
+            // If game state exists, sync it (filtered)
             if (rooms[code].gameState) {
-                socket.emit('game_state_update', rooms[code].gameState);
+                const filtered = filterStateForPlayer(rooms[code].gameState, socket.id);
+                socket.emit('game_state_update', filtered);
             }
         } else {
             socket.emit('error', 'Room not found');
@@ -93,20 +126,19 @@ io.on('connection', (socket) => {
         if (rooms[roomCode]) {
             rooms[roomCode].gameState = newState;
 
-            // Tell each socket which player they are (by matching socket ID to player ID)
-            if (newState && newState.players) {
-                const sockets = io.sockets.adapter.rooms.get(roomCode);
-                if (sockets) {
-                    for (const socketId of sockets) {
-                        const player = newState.players.find(p => p.id === socketId);
-                        if (player) {
-                            io.to(socketId).emit('your_player_id', socketId);
-                        }
-                    }
+            // Send filtered state to each client individually
+            const sockets = io.sockets.adapter.rooms.get(roomCode);
+            if (sockets && newState && newState.players) {
+                for (const socketId of sockets) {
+                    // Create a filtered copy for this specific client
+                    const filteredState = filterStateForPlayer(newState, socketId);
+                    io.to(socketId).emit('game_state_update', filteredState);
+                    io.to(socketId).emit('your_player_id', socketId);
                 }
+            } else {
+                io.to(roomCode).emit('game_state_update', newState);
             }
 
-            io.to(roomCode).emit('game_state_update', newState);
             console.log(`[SERVER] Action ${action} in room ${roomCode}`);
         }
     });
