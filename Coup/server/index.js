@@ -42,9 +42,8 @@ function filterStateForPlayer(state, socketId) {
 
     return {
         ...state,
-        // Hide court deck from clients
-        courtDeck: [],
-        // Only the acting player sees drawnCards
+        // courtDeck is preserved — needed by client-side game engine for Exchange
+        // Only the acting player sees drawnCards during exchange selection
         drawnCards: isActingPlayer ? state.drawnCards : [],
         // Filter each player's cards
         players: state.players.map(player => {
