@@ -1,5 +1,4 @@
 import { useRef, useMemo } from 'react';
-import { useFrame, useLoader } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Character, type InfluenceCard } from '../../game/types';
 
@@ -48,12 +47,13 @@ interface Card3DProps {
 
 export default function Card3D({ card, position, rotation, showFace }: Card3DProps) {
     const meshRef = useRef<THREE.Mesh>(null);
-    const targetFlip = showFace || card.isRevealed ? 0 : Math.PI;
-    const currentFlip = useRef(targetFlip);
+    const isVisible = showFace || card.isRevealed;
 
-    const imagePath = CHAR_IMAGE_PATHS[card.character];
+    // Only load front texture if the card should be visible (revealed)
+    const imagePath = isVisible ? CHAR_IMAGE_PATHS[card.character] : undefined;
 
     const frontTexture = useMemo(() => {
+        if (!isVisible) return null;
         if (imagePath) {
             const loader = new THREE.TextureLoader();
             const tex = loader.load(imagePath);
@@ -61,19 +61,12 @@ export default function Card3D({ card, position, rotation, showFace }: Card3DPro
             return tex;
         }
         return createCardFrontTexture(card.character, card.isRevealed);
-    }, [card.character, card.isRevealed, imagePath]);
+    }, [card.character, card.isRevealed, imagePath, isVisible]);
 
     const backTexture = useMemo(() => createCardBackTexture(), []);
 
-    // Smooth flip animation
-    useFrame(() => {
-        currentFlip.current = THREE.MathUtils.lerp(currentFlip.current, targetFlip, 0.08);
-        if (meshRef.current) {
-            meshRef.current.rotation.y = rotation.y + currentFlip.current;
-        }
-    });
-
-    const sideMat = <meshStandardMaterial color="#222" roughness={0.8} />;
+    // Use the back texture for both sides when card is hidden
+    const displayFront = isVisible && frontTexture ? frontTexture : backTexture;
 
     return (
         <mesh
@@ -87,7 +80,7 @@ export default function Card3D({ card, position, rotation, showFace }: Card3DPro
             <meshStandardMaterial attach="material-1" color="#222" roughness={0.8} /> {/* side */}
             <meshStandardMaterial attach="material-2" color="#222" roughness={0.8} /> {/* top */}
             <meshStandardMaterial attach="material-3" color="#222" roughness={0.8} /> {/* bottom */}
-            <meshStandardMaterial attach="material-4" map={frontTexture} roughness={0.5} /> {/* front */}
+            <meshStandardMaterial attach="material-4" map={displayFront} roughness={0.5} /> {/* front */}
             <meshStandardMaterial attach="material-5" map={backTexture} roughness={0.5} /> {/* back */}
         </mesh>
     );
