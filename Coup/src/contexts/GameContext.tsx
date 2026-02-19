@@ -123,7 +123,6 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         if (!roomCode) return;
 
         const onGameStateUpdate = (newState: GameState) => {
-            console.log('[GAME] game_state_update arrived. socket.id:', socket.id, '| player IDs in state:', newState.players.map(p => `${p.name}=${p.id.slice(-6)}`));
             dispatch({ type: 'SET_STATE', state: newState });
         };
 
