@@ -42,24 +42,9 @@ function filterStateForPlayer(state, socketId) {
 
     return {
         ...state,
-        // courtDeck is preserved — needed by client-side game engine for Exchange
         // Only the acting player sees drawnCards during exchange selection
+        // Card character visibility is controlled client-side via showFace
         drawnCards: isActingPlayer ? state.drawnCards : [],
-        // Filter each player's cards
-        players: state.players.map(player => {
-            if (player.id === socketId) {
-                // This is the local player — show all their cards
-                return player;
-            }
-            // For opponents — hide unrevealed card characters
-            return {
-                ...player,
-                influenceCards: player.influenceCards.map(card => {
-                    if (card.isRevealed) return card; // Revealed cards are public
-                    return { ...card, character: 'hidden' };
-                })
-            };
-        })
     };
 }
 
