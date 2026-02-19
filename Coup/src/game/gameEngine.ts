@@ -176,8 +176,15 @@ function checkPlayerElimination(state: GameState, playerId: string): GameState {
 }
 
 // ── Perder Influência ─────────────────────────────────────
+// ── Perder Influência ─────────────────────────────────────
 export function loseInfluence(state: GameState, playerId: string, cardIndex: number): GameState {
     const player = getPlayerById(state, playerId);
+
+    // Validate index
+    if (cardIndex < 0 || cardIndex >= player.influenceCards.length) {
+        throw new Error(`Índice de carta inválido: ${cardIndex}`);
+    }
+
     const card = player.influenceCards[cardIndex];
 
     if (!card || card.isRevealed) {
@@ -515,6 +522,8 @@ export function passBlock(state: GameState, playerId: string): GameState {
             (p) => p.id !== state.pendingAction?.sourcePlayerId
         );
     }
+
+    console.log('[ENGINE-DEBUG] passBlock:', { playerId, respondedCount: responded.length, blockersCount: potentialBlockers.length, action: actionType });
 
     if (responded.length >= potentialBlockers.length) {
         return resolveAction(state);
@@ -1179,6 +1188,7 @@ export function resolveInquisitorChoice(
 
 // ── Completar Seleção de Carta (perder influência) ────────
 export function selectCardToLose(state: GameState, playerId: string, cardIndex: number): GameState {
+    console.log('[ENGINE-DEBUG] selectCardToLose:', { playerId, reason: state.cardSelectionReason, action: state.pendingAction?.type });
     let newState = loseInfluence(state, playerId, cardIndex);
 
     if (newState.phase === GamePhase.GameOver) return newState;

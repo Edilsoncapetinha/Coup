@@ -103,16 +103,27 @@ export function useGame(): GameContextType {
 export function GameProvider({ children }: { children: React.ReactNode }) {
     const [gameState, dispatch] = useReducer(gameReducer, null);
     const [roomCode, setRoomCode] = useState<string | null>(null);
-    const [myPlayerId, setMyPlayerId] = useState<string | null>(null);
+    // Initialize myPlayerId from socket.id immediately (socket.id is set once connected)
+    const [myPlayerId, setMyPlayerId] = useState<string | null>(() => socket.id ?? null);
     const [connectedPlayers, setConnectedPlayers] = useState<{ id: string, name: string }[]>([]);
     const [restartStatus, setRestartStatus] = useState<{ requests: number, total: number } | null>(null);
     const botTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+    // Keep myPlayerId in sync with socket connection
+    useEffect(() => {
+        const onConnect = () => setMyPlayerId(socket.id ?? null);
+        socket.on('connect', onConnect);
+        // If already connected, set immediately
+        if (socket.connected && socket.id) setMyPlayerId(socket.id);
+        return () => { socket.off('connect', onConnect); };
+    }, []);
 
     // Socket.io sync
     useEffect(() => {
         if (!roomCode) return;
 
         const onGameStateUpdate = (newState: GameState) => {
+            console.log('[GAME] game_state_update arrived. socket.id:', socket.id, '| player IDs in state:', newState.players.map(p => `${p.name}=${p.id.slice(-6)}`));
             dispatch({ type: 'SET_STATE', state: newState });
         };
 
@@ -121,6 +132,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
             if (socket.id) {
                 setMyPlayerId(socket.id);
             }
+        };
+
+        const onYourPlayerId = (id: string) => {
+            setMyPlayerId(id);
         };
 
         const onRestartStatus = (status: { requests: number, total: number }) => {
@@ -134,6 +149,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
         socket.on('game_state_update', onGameStateUpdate);
         socket.on('update_player_list', onPlayerListUpdate);
+        socket.on('your_player_id', onYourPlayerId);
         socket.on('restart_status', onRestartStatus);
         socket.on('game_restart_approved', onGameRestartApproved);
 
@@ -143,6 +159,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         return () => {
             socket.off('game_state_update', onGameStateUpdate);
             socket.off('update_player_list', onPlayerListUpdate);
+            socket.off('your_player_id', onYourPlayerId);
             socket.off('restart_status', onRestartStatus);
             socket.off('game_restart_approved', onGameRestartApproved);
         };

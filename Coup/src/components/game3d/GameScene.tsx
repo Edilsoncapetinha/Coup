@@ -10,15 +10,27 @@ import { type GameState } from '../../game/types';
 
 interface GameSceneProps {
     gameState: GameState;
+    myPlayerId?: string | null;
 }
 
-export default function GameScene({ gameState }: GameSceneProps) {
+export default function GameScene({ gameState, myPlayerId }: GameSceneProps) {
+    // Reorder players so the local player is always at index 0 (camera position)
+    const orderedPlayers = useMemo(() => {
+        if (!myPlayerId) return gameState.players;
+        const myIndex = gameState.players.findIndex(p => p.id === myPlayerId);
+        if (myIndex <= 0) return gameState.players;
+        return [
+            ...gameState.players.slice(myIndex),
+            ...gameState.players.slice(0, myIndex),
+        ];
+    }, [gameState.players, myPlayerId]);
+
     const playerPositions = useMemo(
-        () => getPlayerPositions(gameState.players.length),
-        [gameState.players.length]
+        () => getPlayerPositions(orderedPlayers.length),
+        [orderedPlayers.length]
     );
 
-    // Camera behind human player (index 0)
+    // Camera behind local player (index 0 after reorder)
     const humanPos = playerPositions[0];
     const cam = useMemo(
         () => getHumanCameraPos(humanPos.position, humanPos.rotation),
@@ -84,7 +96,7 @@ export default function GameScene({ gameState }: GameSceneProps) {
             <PokerTable />
 
             {/* ═══ PLAYERS, CARDS & COINS ═══ */}
-            {gameState.players.map((player, idx) => {
+            {orderedPlayers.map((player, idx) => {
                 const pos = playerPositions[idx];
                 const cardPositions = getCardPositions(
                     player.influenceCards.length,
@@ -92,6 +104,8 @@ export default function GameScene({ gameState }: GameSceneProps) {
                     pos.rotation
                 );
                 const coinPos = getCoinPosition(pos.position, pos.rotation);
+                // Find original index for turn indicator
+                const originalIdx = gameState.players.findIndex(p => p.id === player.id);
 
                 return (
                     <group key={player.id}>
@@ -99,7 +113,7 @@ export default function GameScene({ gameState }: GameSceneProps) {
                             player={player}
                             position={pos.position}
                             rotation={pos.rotation}
-                            isCurrentTurn={gameState.currentPlayerIndex === idx}
+                            isCurrentTurn={gameState.currentPlayerIndex === originalIdx}
                         />
 
                         {/* Cards */}
@@ -109,7 +123,7 @@ export default function GameScene({ gameState }: GameSceneProps) {
                                 card={card}
                                 position={cardPositions[cardIdx]?.position ?? new THREE.Vector3()}
                                 rotation={cardPositions[cardIdx]?.rotation ?? new THREE.Euler()}
-                                showFace={player.isHuman || card.isRevealed}
+                                showFace={(myPlayerId ? player.id === myPlayerId : player.isHuman) || card.isRevealed}
                             />
                         ))}
 

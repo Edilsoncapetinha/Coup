@@ -52,7 +52,7 @@ export default function GameBoard() {
     return (
         <div className="relative w-screen h-screen overflow-hidden bg-black">
             {/* 3D Scene (full screen background) */}
-            <GameScene gameState={gameState} />
+            <GameScene gameState={gameState} myPlayerId={myPlayerId} />
 
             {/* 2D HUD Overlay */}
             <HUD

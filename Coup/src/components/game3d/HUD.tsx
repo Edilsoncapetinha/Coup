@@ -82,6 +82,8 @@ export default function HUD({
         ? gameState.players.find((p) => p.id === myPlayerId)
         : gameState.players.find((p) => p.isHuman);
 
+    console.log('[HUD] myPlayerId:', myPlayerId?.slice(-8) ?? 'NULL', '| players:', gameState.players.map(p => `${p.name}=${p.id.slice(-8)}`), '| humanPlayer:', humanPlayer?.name ?? 'NOT FOUND');
+
     const currentPlayer = gameState.players[gameState.currentPlayerIndex];
     // It is my turn if I am the current player
     const isHumanTurn = humanPlayer ? currentPlayer.id === humanPlayer.id : false;
@@ -93,15 +95,24 @@ export default function HUD({
         !gameState.respondedPlayerIds.includes(humanPlayer.id) &&
         humanPlayer.id !== gameState.pendingAction?.sourcePlayerId;
 
+    const targetOnly = gameState.pendingAction ? isBlockableOnlyByTarget(gameState.pendingAction.type) : false;
+    const isTarget = humanPlayer && gameState.pendingAction?.targetPlayerId === humanPlayer.id;
     const canHumanBlock = (
         humanPlayer &&
         gameState.pendingAction &&
-        (!isBlockableOnlyByTarget(gameState.pendingAction.type) ||
-            gameState.pendingAction.targetPlayerId === humanPlayer.id)
+        (!targetOnly || isTarget)
     );
+
+    // DEBUG LOG
+    if (gameState.phase === GamePhase.AwaitingBlock && humanPlayer && !gameState.respondedPlayerIds.includes(humanPlayer.id)) {
+        console.log('[HUD DEBUG] Block Check:', { humanId: humanPlayer.id, targetId: gameState.pendingAction?.targetPlayerId, action: gameState.pendingAction?.type, targetOnly, isTarget, canBlock: canHumanBlock });
+    }
 
     return (
         <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10 }}>
+            <div className="absolute top-16 left-4 bg-red-600/80 text-white text-[10px] px-2 py-0.5 rounded z-50 pointer-events-auto">
+                v1.2-DEBUG | me:{myPlayerId?.slice(-6) ?? 'NULL'} | player:{humanPlayer?.name ?? 'NOT FOUND'}
+            </div>
             {/* Top bar: turn info + player stats */}
             <div className="pointer-events-auto flex items-center justify-between px-6 py-3">
                 <div className="bg-black/70 backdrop-blur-md rounded-xl px-4 py-2 border border-amber-500/20">

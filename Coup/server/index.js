@@ -92,6 +92,20 @@ io.on('connection', (socket) => {
         const { roomCode, action, newState } = data;
         if (rooms[roomCode]) {
             rooms[roomCode].gameState = newState;
+
+            // Tell each socket which player they are (by matching socket ID to player ID)
+            if (newState && newState.players) {
+                const sockets = io.sockets.adapter.rooms.get(roomCode);
+                if (sockets) {
+                    for (const socketId of sockets) {
+                        const player = newState.players.find(p => p.id === socketId);
+                        if (player) {
+                            io.to(socketId).emit('your_player_id', socketId);
+                        }
+                    }
+                }
+            }
+
             io.to(roomCode).emit('game_state_update', newState);
             console.log(`[SERVER] Action ${action} in room ${roomCode}`);
         }

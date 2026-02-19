@@ -34,7 +34,9 @@ const Lobby = () => {
         socket.connect();
 
         function onRoomCreated(code: string) {
-            console.log('[LOBBY] onRoomCreated:', code);
+            console.log('[LOBBY] onRoomCreated:', code, 'socket.id:', socket.id);
+            // Set myPlayerId HERE — this is the guaranteed moment socket.id is correct
+            if (socket.id) setMyPlayerId(socket.id);
             setJoinedRoom(code);
             setRoomCode(code);
             toast({
@@ -44,7 +46,9 @@ const Lobby = () => {
         }
 
         function onRoomJoined(code: string) {
-            console.log('[LOBBY] onRoomJoined:', code);
+            console.log('[LOBBY] onRoomJoined:', code, 'socket.id:', socket.id);
+            // Set myPlayerId HERE — this is the guaranteed moment socket.id is correct
+            if (socket.id) setMyPlayerId(socket.id);
             setJoinedRoom(code);
             setRoomCode(code);
             toast({
