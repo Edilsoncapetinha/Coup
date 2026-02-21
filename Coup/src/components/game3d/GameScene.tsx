@@ -38,31 +38,25 @@ export default function GameScene({ gameState, myPlayerId }: GameSceneProps) {
                 position: [cam.position.x, cam.position.y, cam.position.z],
                 fov: 50,
                 near: 0.1,
-                far: 100,
+                far: 150,
             }}
             gl={{
                 antialias: true,
                 toneMapping: THREE.ACESFilmicToneMapping,
-                toneMappingExposure: 1.2
+                toneMappingExposure: 1.5 // Increased exposure
             }}
             style={{ position: 'absolute', inset: 0 }}
             onCreated={({ camera }) => camera.lookAt(cam.lookAt)}
         >
-            {/* ATMOSPHERIC LIGHTING - Guaranteed visibility */}
-            <ambientLight intensity={0.4} color="#ffd699" />
+            {/* AMBIENT LIGHTING FOR VISIBILITY */}
+            <ambientLight intensity={0.8} color="#ffffff" />
             <spotLight
-                position={[0, 8, 0]}
-                angle={0.8}
-                penumbra={0.7}
-                intensity={18}
-                color="#fff1d0"
+                position={[0, 10, 0]}
+                angle={1.0}
+                intensity={12}
                 castShadow
-                shadow-mapSize-width={1024}
-                shadow-mapSize-height={1024}
             />
-            <pointLight position={[0, 1.5, 0]} intensity={2.0} color="#1a5c3a" distance={10} />
-            <color attach="background" args={['#070503']} />
-            <fog attach="fog" args={['#070503', 12, 35]} />
+            <color attach="background" args={['#0a0806']} />
 
             <SpeakeasyRoom />
             <PokerTable />
@@ -93,18 +87,6 @@ export default function GameScene({ gameState, myPlayerId }: GameSceneProps) {
                     </group>
                 );
             })}
-
-            {/* Ceiling Chandelier */}
-            <group position={[0, 6.8, 0]}>
-                <mesh>
-                    <coneGeometry args={[1.2, 0.6, 6, 1, true]} />
-                    <meshStandardMaterial color="#1a1a1a" roughness={0.8} side={THREE.DoubleSide} />
-                </mesh>
-                <mesh position={[0, -0.25, 0]}>
-                    <circleGeometry args={[1, 16]} />
-                    <meshStandardMaterial color="#ffe4b5" emissive="#ffe4b5" emissiveIntensity={1.5} side={THREE.DoubleSide} />
-                </mesh>
-            </group>
         </Canvas>
     );
 }
@@ -112,74 +94,51 @@ export default function GameScene({ gameState, myPlayerId }: GameSceneProps) {
 function SpeakeasyRoom() {
     return (
         <group>
-            {/* FLOOR */}
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
-                <planeGeometry args={[30, 30]} />
-                <meshStandardMaterial color="#1a0f05" roughness={0.9} map={woodTex} side={THREE.DoubleSide} />
+            {/* FLOOR - Using Basic Material to GUARANTEE visibility */}
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
+                <planeGeometry args={[40, 40]} />
+                <meshBasicMaterial color="#3d2b1f" map={woodTex} side={THREE.DoubleSide} />
             </mesh>
 
-            {/* DIRECT NORTH WALL - Same position as the cyan test (Z=5 to 8) */}
-            <group position={[0, 0, 8]}>
-                {/* Lower Wood Panels */}
-                <mesh position={[0, 1.5, 0]} receiveShadow>
-                    <planeGeometry args={[22, 3]} />
-                    <meshStandardMaterial color="#2d1a08" roughness={0.4} map={woodTex} side={THREE.DoubleSide} />
+            {/* NORTH WALL (Behind opponents) - Very close at Z=6, Basic Material */}
+            <group position={[0, 0, 6]}>
+                <mesh position={[0, 5, 0]}>
+                    <planeGeometry args={[30, 20]} />
+                    <meshBasicMaterial color="#2d1a08" map={woodTex} side={THREE.DoubleSide} />
                 </mesh>
-                {/* Upper Brick Wall */}
-                <mesh position={[0, 6.5, -0.05]} receiveShadow>
-                    <planeGeometry args={[22, 7]} />
-                    <meshStandardMaterial color="#3d2218" roughness={1} map={brickTex} side={THREE.DoubleSide} />
-                </mesh>
-                {/* Shelves */}
-                <group position={[0, 0, 0.2]}>
-                    {[2, 3.8, 5.6].map(y => (
-                        <mesh key={y} position={[0, y, 0]} castShadow receiveShadow>
-                            <boxGeometry args={[16, 0.08, 0.5]} />
-                            <meshStandardMaterial color="#1a0f05" roughness={0.7} map={woodTex} />
-                        </mesh>
-                    ))}
-                    <Bottle position={[2, 2.3, 0]} color="#4e3b31" />
-                    <Bottle position={[2.3, 2.3, 0]} color="#1a3d31" type="tall" />
-                    <Book position={[-3, 2.3, 0]} color="#3d1a1a" />
-                    <Bottle position={[-5, 4.1, 0]} color="#5a3a1a" type="flat" />
-                    <Book position={[4, 4.1, 0]} color="#1a1a1a" />
-                    <Bottle position={[0, 5.9, 0]} color="#c06014" type="tall" />
+
+                {/* Shelves and Props remain Standard to react to spotlight */}
+                <group position={[0, 0, -0.2]}>
+                    <mesh position={[0, 2.5, 0]} castShadow receiveShadow>
+                        <boxGeometry args={[18, 0.1, 0.6]} />
+                        <meshStandardMaterial color="#1a0f05" roughness={0.7} map={woodTex} />
+                    </mesh>
+                    <Bottle position={[3, 2.8, 0]} color="#7a4a2a" />
+                    <Bottle position={[-3, 2.8, 0]} color="#1a3d31" type="tall" />
+                    <Book position={[1, 2.8, 0]} color="#3d1a1a" />
                 </group>
-                <WallSconce position={[-7, 4.5, 0.1]} />
-                <WallSconce position={[7, 4.5, 0.1]} />
+
+                <WallSconce position={[-8, 4.5, -0.2]} rotation={[0, Math.PI, 0]} />
+                <WallSconce position={[8, 4.5, -0.2]} rotation={[0, Math.PI, 0]} />
             </group>
 
-            {/* SIDE WALLS - Tighter layout for visibility */}
-            <group position={[-11, 0, 1]} rotation={[0, Math.PI / 2, 0]}>
-                <mesh position={[0, 5, 0]} receiveShadow>
-                    <planeGeometry args={[25, 10]} />
-                    <meshStandardMaterial color="#2d1a08" roughness={0.6} map={woodTex} side={THREE.DoubleSide} />
+            {/* SIDE WALLS - Basic Material */}
+            <group position={[-12, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+                <mesh position={[0, 5, 0]}>
+                    <planeGeometry args={[30, 20]} />
+                    <meshBasicMaterial color="#2d1a08" map={woodTex} side={THREE.DoubleSide} />
                 </mesh>
-                <mesh position={[0, 0.8, 0.8]} castShadow receiveShadow>
-                    <boxGeometry args={[8, 1.6, 1.2]} />
-                    <meshStandardMaterial color="#1a0f05" roughness={0.4} map={woodTex} />
-                </mesh>
-                <WallSconce position={[0, 4.5, 0.1]} />
+                <WallSconce position={[0, 4.5, -0.2]} rotation={[0, Math.PI, 0]} />
             </group>
 
-            <group position={[11, 0, 1]} rotation={[0, -Math.PI / 2, 0]}>
-                <mesh position={[0, 5, 0]} receiveShadow>
-                    <planeGeometry args={[25, 10]} />
-                    <meshStandardMaterial color="#2d1a08" roughness={0.6} map={woodTex} side={THREE.DoubleSide} />
+            <group position={[12, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
+                <mesh position={[0, 5, 0]}>
+                    <planeGeometry args={[30, 20]} />
+                    <meshBasicMaterial color="#2d1a08" map={woodTex} side={THREE.DoubleSide} />
                 </mesh>
-                <group position={[0, 0.8, 1.2]}>
-                    <Barrel position={[0, 0, 0]} />
-                    <Barrel position={[1.2, 0, 0.3]} rotation={[0, 0.4, 0]} />
-                    <Barrel position={[0.6, 1.2, 0]} rotation={[Math.PI / 2, 0, 0]} />
-                </group>
-                <WallSconce position={[0, 4.5, 0.1]} />
+                <Barrel position={[0, 0.6, -1.2]} />
+                <WallSconce position={[0, 4.5, -0.2]} rotation={[0, Math.PI, 0]} />
             </group>
-
-            {/* CEILING */}
-            <mesh position={[0, 10, 0]} rotation={[Math.PI / 2, 0, 0]}>
-                <planeGeometry args={[30, 30]} />
-                <meshStandardMaterial color="#050403" roughness={1} side={THREE.DoubleSide} />
-            </mesh>
         </group>
     );
 }

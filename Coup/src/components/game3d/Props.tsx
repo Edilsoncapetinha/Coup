@@ -3,18 +3,18 @@ import * as THREE from 'three';
 // Procedural Wood Grain Texture
 function getWoodTexture() {
     const canvas = document.createElement('canvas');
-    canvas.width = 128;
-    canvas.height = 128;
+    canvas.width = 256;
+    canvas.height = 256;
     const ctx = canvas.getContext('2d')!;
     ctx.fillStyle = '#2a1a05';
-    ctx.fillRect(0, 0, 128, 128);
+    ctx.fillRect(0, 0, 256, 256);
     ctx.strokeStyle = '#3d2b1f';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 30; i++) {
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 40; i++) {
         ctx.beginPath();
-        const y = Math.random() * 128;
+        const y = Math.random() * 256;
         ctx.moveTo(0, y);
-        ctx.bezierCurveTo(40, y + 5, 80, y - 5, 128, y);
+        ctx.bezierCurveTo(80, y + 10, 160, y - 10, 256, y);
         ctx.stroke();
     }
     const tex = new THREE.CanvasTexture(canvas);
@@ -26,23 +26,23 @@ function getWoodTexture() {
 // Procedural Brick Texture
 function getBrickTexture() {
     const canvas = document.createElement('canvas');
-    canvas.width = 128;
-    canvas.height = 128;
+    canvas.width = 256;
+    canvas.height = 256;
     const ctx = canvas.getContext('2d')!;
     ctx.fillStyle = '#3d2218';
-    ctx.fillRect(0, 0, 128, 128);
+    ctx.fillRect(0, 0, 256, 256);
     ctx.strokeStyle = '#1a0d0a';
     ctx.lineWidth = 2;
-    for (let y = 0; y < 128; y += 16) {
+    for (let y = 0; y < 256; y += 32) {
         ctx.beginPath();
         ctx.moveTo(0, y);
-        ctx.lineTo(128, y);
+        ctx.lineTo(256, y);
         ctx.stroke();
-        const offset = (y / 16) % 2 === 0 ? 0 : 16;
-        for (let x = offset; x < 128; x += 32) {
+        const offset = (y / 32) % 2 === 0 ? 0 : 32;
+        for (let x = offset; x < 256; x += 64) {
             ctx.beginPath();
             ctx.moveTo(x, y);
-            ctx.lineTo(x, y + 16);
+            ctx.lineTo(x, y + 32);
             ctx.stroke();
         }
     }
@@ -127,9 +127,9 @@ export function WallSconce({ position, rotation = [0, 0, 0] }: { position: [numb
             </mesh>
             <pointLight
                 position={[0, 0.2, 0.3]}
-                intensity={1.5}
+                intensity={2.0}
                 color="#ff8c00"
-                distance={5}
+                distance={6}
             />
         </group>
     );
