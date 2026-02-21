@@ -1,38 +1,55 @@
 import * as THREE from 'three';
 
-// Procedural Wood Grain Texture - BRIGHTER
+// Procedural Wood Grain Texture - VERTICAL and MORE DETAILED
 function getWoodTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 256;
-    canvas.height = 256;
+    canvas.height = 512; // Taller for vertical grain
     const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#4a2c1a'; // Much lighter wood
-    ctx.fillRect(0, 0, 256, 256);
-    ctx.strokeStyle = '#5d3d2a';
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 40; i++) {
+
+    // Base Mahogany Color
+    ctx.fillStyle = '#4a2c1a';
+    ctx.fillRect(0, 0, 256, 512);
+
+    // Vertical Grain
+    ctx.strokeStyle = '#3d2b1f';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 60; i++) {
         ctx.beginPath();
-        const y = Math.random() * 256;
-        ctx.moveTo(0, y);
-        ctx.bezierCurveTo(80, y + 15, 160, y - 15, 256, y);
+        const x = Math.random() * 256;
+        ctx.moveTo(x, 0);
+        ctx.bezierCurveTo(x + 10, 150, x - 10, 350, x, 512);
         ctx.stroke();
     }
+
+    // Subtle Knots
+    ctx.fillStyle = 'rgba(30, 15, 5, 0.15)';
+    for (let i = 0; i < 5; i++) {
+        const x = Math.random() * 256;
+        const y = Math.random() * 512;
+        ctx.beginPath();
+        ctx.ellipse(x, y, 10, 25, Math.random() * 0.1, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(2, 2);
+    tex.repeat.set(1, 1);
     return tex;
 }
 
-// Procedural Brick Texture - BRIGHTER
+// Procedural Brick Texture - REFINED
 function getBrickTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 256;
     canvas.height = 256;
     const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#6d3d33'; // Brighter bricks
+    ctx.fillStyle = '#5d3528'; // Brighter, more varied color
     ctx.fillRect(0, 0, 256, 256);
+
+    // Mortar lines
     ctx.strokeStyle = '#2a1a16';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3;
     for (let y = 0; y < 256; y += 32) {
         ctx.beginPath();
         ctx.moveTo(0, y);
@@ -46,9 +63,16 @@ function getBrickTexture() {
             ctx.stroke();
         }
     }
+
+    // Add dirt/grit
+    for (let i = 0; i < 500; i++) {
+        ctx.fillStyle = `rgba(0,0,0,${Math.random() * 0.1})`;
+        ctx.fillRect(Math.random() * 256, Math.random() * 256, 2, 2);
+    }
+
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(4, 4);
+    tex.repeat.set(2, 2);
     return tex;
 }
 
@@ -107,23 +131,28 @@ export function Barrel({ position, rotation = [0, 0, 0] }: { position: [number, 
 export function WallSconce({ position, rotation = [0, 0, 0] }: { position: [number, number, number], rotation?: [number, number, number] }) {
     return (
         <group position={position} rotation={rotation}>
+            {/* Sconce bracket */}
             <mesh castShadow>
                 <boxGeometry args={[0.1, 0.4, 0.05]} />
                 <meshStandardMaterial color="#1a0f05" metalness={0.6} roughness={0.3} />
             </mesh>
+            {/* Bulbs/Lights */}
             <mesh position={[0, 0.1, 0.2]}>
-                <sphereGeometry args={[0.08, 8, 8]} />
+                <sphereGeometry args={[0.08, 12, 12]} />
                 <meshStandardMaterial
                     color="#ffd27d"
-                    emissive="#ffcc33"
-                    emissiveIntensity={2}
+                    emissive="#ff8c00"
+                    emissiveIntensity={4}
+                    transparent
+                    opacity={0.9}
                 />
             </mesh>
             <pointLight
-                position={[0, 0.1, 0.3]}
-                intensity={2.5}  // Increased intensity
-                color="#ffaa44"
-                distance={10}
+                position={[0, 0.1, 0.4]}
+                intensity={4}
+                color="#ff8c00"
+                distance={8}
+                decay={2}
             />
         </group>
     );
