@@ -27,7 +27,12 @@ export default function PokerTable() {
         <group position={[0, 0, 0]}>
             <mesh position={[0, tableHeight + 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
                 <shapeGeometry args={[feltShape]} />
-                <meshStandardMaterial color="#1a5c3a" roughness={0.9} metalness={0.0} side={THREE.DoubleSide} />
+                <meshBasicMaterial color="#ff00ff" side={THREE.DoubleSide} />
+            </mesh>
+            {/* NEON DIAGNOSTIC CUBE */}
+            <mesh position={[0, tableHeight + 1, 0]}>
+                <boxGeometry args={[1, 1, 1]} />
+                <meshBasicMaterial color="#00ff00" />
             </mesh>
             <RailRing shape={innerRailShape} innerShape={feltShape} y={tableHeight} height={0.06} color="#8B6914" roughness={0.35} metalness={0.15} />
             <RailRing shape={createOvalShape(tableWidth * 0.385, tableDepth * 0.325)} innerShape={feltShape} y={tableHeight + 0.015} height={0.01} color="#C5A028" roughness={0.2} metalness={0.6} />
