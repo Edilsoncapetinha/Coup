@@ -51,38 +51,36 @@ export default function GameScene({ gameState, myPlayerId }: GameSceneProps) {
                 camera.lookAt(cam.lookAt);
             }}
         >
-            <ambientLight intensity={1.2} color="#ffd699" />
+            <ambientLight intensity={1.5} color="#ffd699" />
             <spotLight
-                position={[0, 8, 0]}
+                position={[0, 10, 0]}
                 angle={1.2}
                 penumbra={0.5}
-                intensity={12}
+                intensity={15}
                 color="#fff1d0"
                 castShadow
                 shadow-mapSize-width={2048}
                 shadow-mapSize-height={2048}
             />
-            <pointLight position={[0, 2, 0]} intensity={2.5} color="#1a5c3a" distance={10} />
-            <color attach="background" args={['#0f0d0b']} />
+            <pointLight position={[0, 2, 0]} intensity={3} color="#1a5c3a" distance={15} />
+            <color attach="background" args={['#1a1512']} />
 
             <group>
-                <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
-                    <planeGeometry args={[60, 60]} />
-                    <meshStandardMaterial color="#2b1a10" roughness={0.9} metalness={0.0} side={THREE.DoubleSide} />
+                <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
+                    <planeGeometry args={[100, 100]} />
+                    <meshStandardMaterial color="#3d2b1f" roughness={1} side={THREE.DoubleSide} />
                 </mesh>
-                <group position={[0, 0, -12]}>
-                    <mesh position={[0, 2, 0]} receiveShadow>
-                        <planeGeometry args={[40, 4]} />
-                        <meshStandardMaterial color="#4d2e1c" roughness={0.4} metalness={0.1} side={THREE.DoubleSide} />
+
+                {/* THE MAIN BACK WALL (North - Visible from Camera) */}
+                <group position={[0, 0, 15]}>
+                    <mesh position={[0, 5, 0]} receiveShadow>
+                        <planeGeometry args={[50, 10]} />
+                        <meshStandardMaterial color="#4d2e1c" roughness={0.5} side={THREE.DoubleSide} />
                     </mesh>
-                    <mesh position={[0, 7, -0.1]} receiveShadow>
-                        <planeGeometry args={[40, 6]} />
-                        <meshStandardMaterial color="#5e3828" roughness={1} side={THREE.DoubleSide} />
-                    </mesh>
-                    <group position={[0, 0, 0.2]}>
-                        {[2.5, 4.5, 6.5, 8.5].map((y) => (
+                    <group position={[0, 0, -0.2]}>
+                        {[2, 4, 6, 8].map((y) => (
                             <mesh key={y} position={[0, y, 0]} receiveShadow castShadow>
-                                <boxGeometry args={[25, 0.1, 0.5]} />
+                                <boxGeometry args={[30, 0.15, 0.6]} />
                                 <meshStandardMaterial color="#2b1a10" roughness={0.8} />
                             </mesh>
                         ))}
@@ -99,35 +97,35 @@ export default function GameScene({ gameState, myPlayerId }: GameSceneProps) {
                         <Bottle position={[0.4, 6.8, 0]} color="#2a2a2a" />
                         <Book position={[-2, 8.8, 0]} color="#333" />
                     </group>
-                    <WallSconce position={[-10, 5, 0.2]} />
-                    <WallSconce position={[10, 5, 0.2]} />
+                    <WallSconce position={[-12, 5, -0.3]} rotation={[0, Math.PI, 0]} />
+                    <WallSconce position={[12, 5, -0.3]} rotation={[0, Math.PI, 0]} />
                 </group>
-                <group position={[-15, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+
+                {/* SIDE WALLS */}
+                <group position={[-20, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
                     <mesh position={[0, 5, 0]} receiveShadow>
-                        <planeGeometry args={[40, 10]} />
-                        <meshStandardMaterial color="#4d2e1c" roughness={0.5} side={THREE.DoubleSide} />
+                        <planeGeometry args={[50, 10]} />
+                        <meshStandardMaterial color="#3d2b1f" roughness={0.6} side={THREE.DoubleSide} />
                     </mesh>
-                    <mesh position={[0, 0.8, 1.2]} castShadow receiveShadow>
-                        <boxGeometry args={[12, 1.6, 2]} />
-                        <meshStandardMaterial color="#2b1a10" roughness={0.3} metalness={0.1} />
-                    </mesh>
-                    <WallSconce position={[0, 5, 0.2]} />
                 </group>
-                <group position={[15, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
+                <group position={[20, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
                     <mesh position={[0, 5, 0]} receiveShadow>
-                        <planeGeometry args={[40, 10]} />
-                        <meshStandardMaterial color="#4d2e1c" roughness={0.5} side={THREE.DoubleSide} />
+                        <planeGeometry args={[50, 10]} />
+                        <meshStandardMaterial color="#3d2b1f" roughness={0.6} side={THREE.DoubleSide} />
                     </mesh>
-                    <group position={[0, 0.8, 1.5]}>
-                        <Barrel position={[0, 0, 0]} />
-                        <Barrel position={[1.2, 0, 0.3]} rotation={[0, 0.4, 0]} />
-                        <Barrel position={[0.6, 1.2, 0]} rotation={[Math.PI / 2, 0, 0]} />
-                    </group>
-                    <WallSconce position={[0, 5, 0.2]} />
                 </group>
+
+                {/* FRONT WALL (Behind Camera) */}
+                <group position={[0, 0, -20]}>
+                    <mesh position={[0, 5, 0]} receiveShadow>
+                        <planeGeometry args={[50, 10]} />
+                        <meshStandardMaterial color="#3d2b1f" roughness={0.6} side={THREE.DoubleSide} />
+                    </mesh>
+                </group>
+
                 <mesh position={[0, 10, 0]} rotation={[Math.PI / 2, 0, 0]}>
-                    <planeGeometry args={[60, 60]} />
-                    <meshStandardMaterial color="#0f0f0f" roughness={1} side={THREE.DoubleSide} />
+                    <planeGeometry args={[100, 100]} />
+                    <meshStandardMaterial color="#111" roughness={1} side={THREE.DoubleSide} />
                 </mesh>
             </group>
 

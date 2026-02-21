@@ -59,10 +59,6 @@ export default function PokerTable() {
                 <torusGeometry args={[0.06, 0.025, 8, 16]} />
                 <meshStandardMaterial color="#6B4226" roughness={0.4} metalness={0.15} />
             </mesh>
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
-                <planeGeometry args={[24, 24]} />
-                <meshStandardMaterial color="#1a1008" roughness={0.7} metalness={0.05} />
-            </mesh>
         </group>
     );
 }
