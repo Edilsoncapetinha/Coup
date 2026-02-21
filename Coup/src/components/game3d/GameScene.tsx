@@ -152,6 +152,14 @@ function SpeakeasyRoom() {
                 <Barrel position={[0, 0.6, -1.5]} />
                 <WallSconce position={[0, 6, -0.2]} rotation={[0, Math.PI, 0]} />
             </group>
+
+            {/* SOUTH WALL (Behind Player/Camera) */}
+            <group position={[0, 0, -10]}>
+                <mesh position={[0, 7.5, 0]}>
+                    <planeGeometry args={[40, 15]} />
+                    <meshBasicMaterial color="#ffffff" map={woodTex} side={THREE.DoubleSide} />
+                </mesh>
+            </group>
         </group>
     );
 }
