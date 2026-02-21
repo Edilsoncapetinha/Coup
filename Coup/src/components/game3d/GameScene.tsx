@@ -15,7 +15,6 @@ interface GameSceneProps {
 }
 
 export default function GameScene({ gameState, myPlayerId }: GameSceneProps) {
-    // Reorder players so the local player is always at index 0 (camera position)
     const orderedPlayers = useMemo(() => {
         if (!myPlayerId) return gameState.players;
         const myIndex = gameState.players.findIndex(p => p.id === myPlayerId);
@@ -31,7 +30,6 @@ export default function GameScene({ gameState, myPlayerId }: GameSceneProps) {
         [orderedPlayers.length]
     );
 
-    // Camera behind local player (index 0 after reorder)
     const humanPos = playerPositions[0];
     const cam = useMemo(
         () => getHumanCameraPos(humanPos.position, humanPos.rotation),
@@ -47,54 +45,34 @@ export default function GameScene({ gameState, myPlayerId }: GameSceneProps) {
                 near: 0.1,
                 far: 80,
             }}
-            gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.0 }}
+            gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 1.2 }}
             style={{ position: 'absolute', inset: 0 }}
             onCreated={({ camera }) => {
                 camera.lookAt(cam.lookAt);
             }}
         >
-            {/* ═══ SPEAKEASY CHIAROSCURO LIGHTING ═══ */}
-
-            {/* Increased ambient light for better visibility */}
-            <ambientLight intensity={0.35} color="#ffd699" />
-
-            {/* Main overhead pendant lamp - high contrast focal point */}
+            <ambientLight intensity={0.6} color="#ffd699" />
             <spotLight
                 position={[0, 6, 0]}
-                angle={0.8}
-                penumbra={0.6}
-                intensity={6.5}
+                angle={1.0}
+                penumbra={0.5}
+                intensity={8.5}
                 color="#fff1d0"
                 castShadow
                 shadow-mapSize-width={2048}
                 shadow-mapSize-height={2048}
                 shadow-bias={-0.0001}
             />
-
-            {/* Subtle bounce light from table to illuminate characters */}
-            <pointLight position={[0, 1.2, 0]} intensity={1.2} color="#1a5c3a" distance={6} />
-
-            {/* Speakeasy atmosphere fog — pushed further back */}
-            <fog attach="fog" args={['#0a0806', 15, 35]} />
-
-            {/* Background — dark but tinted */}
+            <pointLight position={[0, 1.2, 0]} intensity={1.8} color="#1a5c3a" distance={8} />
+            <fog attach="fog" args={['#0a0806', 20, 45]} />
             <color attach="background" args={['#0a0806']} />
-
             <SpeakeasyRoom />
-
             <PokerTable />
-
             {orderedPlayers.map((player, idx) => {
                 const pos = playerPositions[idx];
-                const cardPositions = getCardPositions(
-                    player.influenceCards.length,
-                    pos.position,
-                    pos.rotation
-                );
+                const cardPositions = getCardPositions(player.influenceCards.length, pos.position, pos.rotation);
                 const coinPos = getCoinPosition(pos.position, pos.rotation);
-                // Find original index for turn indicator
                 const originalIdx = gameState.players.findIndex(p => p.id === player.id);
-
                 return (
                     <group key={player.id}>
                         <PlayerModel
@@ -103,8 +81,6 @@ export default function GameScene({ gameState, myPlayerId }: GameSceneProps) {
                             rotation={pos.rotation}
                             isCurrentTurn={gameState.currentPlayerIndex === originalIdx}
                         />
-
-                        {/* Cards */}
                         {player.influenceCards.map((card, cardIdx) => (
                             <Card3D
                                 key={`${player.id}-card-${cardIdx}`}
@@ -114,35 +90,19 @@ export default function GameScene({ gameState, myPlayerId }: GameSceneProps) {
                                 showFace={card.isRevealed}
                             />
                         ))}
-
-                        {/* Coins */}
                         <CoinPile count={player.coins} position={coinPos} />
                     </group>
                 );
             })}
-
             <group position={[0, 5.5, 0]}>
-                {/* Lamp shade */}
                 <mesh>
                     <coneGeometry args={[1.2, 0.5, 6, 1, true]} />
-                    <meshStandardMaterial
-                        color="#2a2a2a"
-                        roughness={0.8}
-                        metalness={0.3}
-                        side={THREE.DoubleSide}
-                    />
+                    <meshStandardMaterial color="#2a2a2a" roughness={0.8} metalness={0.3} side={THREE.DoubleSide} />
                 </mesh>
-                {/* Lamp inner glow */}
                 <mesh position={[0, -0.15, 0]}>
                     <circleGeometry args={[1.15, 16]} />
-                    <meshStandardMaterial
-                        color="#ffe4b5"
-                        emissive="#ffe4b5"
-                        emissiveIntensity={0.8}
-                        side={THREE.DoubleSide}
-                    />
+                    <meshStandardMaterial color="#ffe4b5" emissive="#ffe4b5" emissiveIntensity={0.8} side={THREE.DoubleSide} />
                 </mesh>
-                {/* Cord */}
                 <mesh position={[0, 1.5, 0]}>
                     <cylinderGeometry args={[0.01, 0.01, 3, 4]} />
                     <meshStandardMaterial color="#333" />
@@ -152,9 +112,6 @@ export default function GameScene({ gameState, myPlayerId }: GameSceneProps) {
     );
 }
 
-/**
- * Speakeasy room — mahogany walls, brick accents, shelves with props
- */
 function SpeakeasyRoom() {
     return (
         <group>

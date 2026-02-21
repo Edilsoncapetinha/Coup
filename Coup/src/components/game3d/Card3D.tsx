@@ -48,8 +48,6 @@ interface Card3DProps {
 export default function Card3D({ card, position, rotation, showFace }: Card3DProps) {
     const meshRef = useRef<THREE.Mesh>(null);
     const isVisible = showFace || card.isRevealed;
-
-    // Only load front texture if the card should be visible (revealed)
     const imagePath = isVisible ? CHAR_IMAGE_PATHS[card.character] : undefined;
 
     const frontTexture = useMemo(() => {
@@ -64,24 +62,17 @@ export default function Card3D({ card, position, rotation, showFace }: Card3DPro
     }, [card.character, card.isRevealed, imagePath, isVisible]);
 
     const backTexture = useMemo(() => createCardBackTexture(), []);
-
-    // Use the back texture for both sides when card is hidden
     const displayFront = isVisible && frontTexture ? frontTexture : backTexture;
 
     return (
-        <mesh
-            ref={meshRef}
-            position={[position.x, position.y, position.z]}
-            rotation={[rotation.x, rotation.y, rotation.z]}
-            castShadow
-        >
+        <mesh ref={meshRef} position={[position.x, position.y, position.z]} rotation={[rotation.x, rotation.y, rotation.z]} castShadow>
             <boxGeometry args={[0.35, 0.5, 0.008]} />
-            <meshStandardMaterial attach="material-0" color="#222" roughness={0.8} /> {/* side */}
-            <meshStandardMaterial attach="material-1" color="#222" roughness={0.8} /> {/* side */}
-            <meshStandardMaterial attach="material-2" color="#222" roughness={0.8} /> {/* top */}
-            <meshStandardMaterial attach="material-3" color="#222" roughness={0.8} /> {/* bottom */}
-            <meshStandardMaterial attach="material-4" map={displayFront} roughness={0.5} /> {/* front */}
-            <meshStandardMaterial attach="material-5" map={backTexture} roughness={0.5} /> {/* back */}
+            <meshStandardMaterial attach="material-0" color="#222" roughness={0.8} />
+            <meshStandardMaterial attach="material-1" color="#222" roughness={0.8} />
+            <meshStandardMaterial attach="material-2" color="#222" roughness={0.8} />
+            <meshStandardMaterial attach="material-3" color="#222" roughness={0.8} />
+            <meshStandardMaterial attach="material-4" map={displayFront} roughness={0.5} />
+            <meshStandardMaterial attach="material-5" map={backTexture} roughness={0.5} />
         </mesh>
     );
 }
@@ -91,37 +82,24 @@ function createCardFrontTexture(character: Character, isRevealed: boolean): THRE
     canvas.width = 256;
     canvas.height = 384;
     const ctx = canvas.getContext('2d')!;
-
     const baseColor = isRevealed ? '#331111' : (CHAR_COLORS[character] ?? '#333');
-
-    // Background
     ctx.fillStyle = baseColor;
     ctx.fillRect(0, 0, 256, 384);
-
-    // Border
     ctx.strokeStyle = isRevealed ? '#661111' : '#b8860b';
     ctx.lineWidth = 6;
     ctx.strokeRect(8, 8, 240, 368);
-
-    // Inner border
     ctx.strokeStyle = isRevealed ? '#441111' : '#8b6914';
     ctx.lineWidth = 2;
     ctx.strokeRect(16, 16, 224, 352);
-
-    // Symbol
     ctx.fillStyle = isRevealed ? '#661111' : '#FFD700';
     ctx.font = 'bold 80px serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(CHAR_SYMBOLS[character] ?? '?', 128, 160);
-
-    // Character name
     ctx.fillStyle = isRevealed ? '#553333' : '#ffffffcc';
     ctx.font = 'bold 22px sans-serif';
     ctx.fillText(character, 128, 310);
-
     if (isRevealed) {
-        // X overlay
         ctx.strokeStyle = '#ff000066';
         ctx.lineWidth = 8;
         ctx.beginPath();
@@ -131,7 +109,6 @@ function createCardFrontTexture(character: Character, isRevealed: boolean): THRE
         ctx.lineTo(40, 344);
         ctx.stroke();
     }
-
     const texture = new THREE.CanvasTexture(canvas);
     texture.needsUpdate = true;
     return texture;
@@ -142,47 +119,30 @@ function createCardBackTexture(): THREE.CanvasTexture {
     canvas.width = 256;
     canvas.height = 384;
     const ctx = canvas.getContext('2d')!;
-
-    // Dark background
     ctx.fillStyle = '#1a0e05';
     ctx.fillRect(0, 0, 256, 384);
-
-    // Gold border
     ctx.strokeStyle = '#b8860b';
     ctx.lineWidth = 6;
     ctx.strokeRect(8, 8, 240, 368);
-
-    // Diamond pattern
     ctx.strokeStyle = '#8b691433';
     ctx.lineWidth = 1;
     for (let i = 0; i < 12; i++) {
         for (let j = 0; j < 18; j++) {
             const x = 20 + i * 20;
             const y = 20 + j * 20;
-            ctx.beginPath();
-            ctx.moveTo(x, y - 8);
-            ctx.lineTo(x + 8, y);
-            ctx.lineTo(x, y + 8);
-            ctx.lineTo(x - 8, y);
-            ctx.closePath();
-            ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(x, y - 8); ctx.lineTo(x + 8, y); ctx.lineTo(x, y + 8); ctx.lineTo(x - 8, y); ctx.closePath(); ctx.stroke();
         }
     }
-
-    // Center emblem
     ctx.fillStyle = '#b8860b';
     ctx.font = 'bold 48px serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('C', 128, 192);
-
-    // Decorative circle
     ctx.strokeStyle = '#b8860b';
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.arc(128, 192, 40, 0, Math.PI * 2);
     ctx.stroke();
-
     const texture = new THREE.CanvasTexture(canvas);
     texture.needsUpdate = true;
     return texture;

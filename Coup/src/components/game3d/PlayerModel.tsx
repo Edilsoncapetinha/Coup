@@ -3,7 +3,6 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Character, type Player } from '../../game/types';
 
-// Character-specific colors and accessory configs
 const CHAR_STYLES: Record<Character, { bodyColor: string; accent: string }> = {
     [Character.Duke]: { bodyColor: '#8B008B', accent: '#FFD700' },
     [Character.Assassin]: { bodyColor: '#1a1a2e', accent: '#DC143C' },
@@ -24,16 +23,10 @@ interface PlayerModelProps {
     isCurrentTurn: boolean;
 }
 
-export default function PlayerModel({
-    player,
-    position,
-    rotation,
-    isCurrentTurn,
-}: PlayerModelProps) {
+export default function PlayerModel({ player, position, rotation, isCurrentTurn }: PlayerModelProps) {
     const groupRef = useRef<THREE.Group>(null);
     const glowRef = useRef<THREE.Mesh>(null);
 
-    // Use the first alive card's character for color, fallback to Duke
     const primaryChar = useMemo(() => {
         const alive = player.influenceCards.find((c) => !c.isRevealed);
         return alive?.character ?? Character.Duke;
@@ -42,59 +35,30 @@ export default function PlayerModel({
     const DEFAULT_STYLE = { bodyColor: '#444', accent: '#888' };
     const style = CHAR_STYLES[primaryChar] ?? DEFAULT_STYLE;
 
-    // Idle breathing animation
     useFrame((state) => {
         if (groupRef.current) {
             const t = state.clock.elapsedTime;
-            groupRef.current.position.y = player.isEliminated
-                ? -0.3
-                : Math.sin(t * 1.5 + position.x) * 0.02;
-
-            // Eliminated: tilt over
+            groupRef.current.position.y = player.isEliminated ? -0.3 : Math.sin(t * 1.5 + position.x) * 0.02;
             if (player.isEliminated) {
-                groupRef.current.rotation.z = THREE.MathUtils.lerp(
-                    groupRef.current.rotation.z,
-                    Math.PI / 4,
-                    0.02
-                );
+                groupRef.current.rotation.z = THREE.MathUtils.lerp(groupRef.current.rotation.z, Math.PI / 4, 0.02);
             }
         }
-
-        // Turn indicator glow pulse
         if (glowRef.current) {
             const pulse = Math.sin(state.clock.elapsedTime * 3) * 0.5 + 0.5;
-            (glowRef.current.material as THREE.MeshStandardMaterial).emissiveIntensity =
-                isCurrentTurn ? 0.3 + pulse * 0.7 : 0;
+            (glowRef.current.material as THREE.MeshStandardMaterial).emissiveIntensity = isCurrentTurn ? 0.3 + pulse * 0.7 : 0;
         }
     });
 
     return (
-        <group
-            ref={groupRef}
-            position={[position.x, 0, position.z]}
-            rotation={[0, rotation, 0]}
-        >
-            {/* Body — capsule-like (cylinder + spheres) */}
+        <group ref={groupRef} position={[position.x, 0, position.z]} rotation={[0, rotation, 0]}>
             <mesh position={[0, 0.7, 0]} castShadow>
                 <cylinderGeometry args={[0.2, 0.25, 0.6, 16]} />
-                <meshStandardMaterial
-                    color={player.isEliminated ? '#333' : style.bodyColor}
-                    roughness={0.6}
-                    metalness={0.2}
-                />
+                <meshStandardMaterial color={player.isEliminated ? '#333' : style.bodyColor} roughness={0.6} metalness={0.2} />
             </mesh>
-
-            {/* Head */}
             <mesh position={[0, 1.15, 0]} castShadow>
                 <sphereGeometry args={[0.18, 16, 16]} />
-                <meshStandardMaterial
-                    color={player.isEliminated ? '#444' : '#e8d5b7'}
-                    roughness={0.7}
-                    metalness={0.05}
-                />
+                <meshStandardMaterial color={player.isEliminated ? '#444' : '#e8d5b7'} roughness={0.7} metalness={0.05} />
             </mesh>
-
-            {/* Eyes */}
             <mesh position={[0.06, 1.18, 0.14]}>
                 <sphereGeometry args={[0.03, 8, 8]} />
                 <meshStandardMaterial color={player.isEliminated ? '#222' : '#111'} />
@@ -103,27 +67,15 @@ export default function PlayerModel({
                 <sphereGeometry args={[0.03, 8, 8]} />
                 <meshStandardMaterial color={player.isEliminated ? '#222' : '#111'} />
             </mesh>
-
-            {/* Character accessory on top of head */}
             <CharacterAccessory character={primaryChar} eliminated={player.isEliminated} accentColor={style.accent} />
-
-            {/* Shoulders */}
             <mesh position={[0.28, 0.9, 0]} castShadow>
                 <sphereGeometry args={[0.1, 8, 8]} />
-                <meshStandardMaterial
-                    color={player.isEliminated ? '#333' : style.bodyColor}
-                    roughness={0.6}
-                />
+                <meshStandardMaterial color={player.isEliminated ? '#333' : style.bodyColor} roughness={0.6} />
             </mesh>
             <mesh position={[-0.28, 0.9, 0]} castShadow>
                 <sphereGeometry args={[0.1, 8, 8]} />
-                <meshStandardMaterial
-                    color={player.isEliminated ? '#333' : style.bodyColor}
-                    roughness={0.6}
-                />
+                <meshStandardMaterial color={player.isEliminated ? '#333' : style.bodyColor} roughness={0.6} />
             </mesh>
-
-            {/* Arms holding cards */}
             <mesh position={[0.2, 0.85, 0.3]} rotation={[0.5, 0, -0.2]} castShadow>
                 <capsuleGeometry args={[0.06, 0.4, 8, 16]} />
                 <meshStandardMaterial color={player.isEliminated ? '#333' : style.bodyColor} roughness={0.6} />
@@ -132,38 +84,20 @@ export default function PlayerModel({
                 <capsuleGeometry args={[0.06, 0.4, 8, 16]} />
                 <meshStandardMaterial color={player.isEliminated ? '#333' : style.bodyColor} roughness={0.6} />
             </mesh>
-
-            {/* Turn glow ring (on the table surface around the player) */}
             <mesh ref={glowRef} position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
                 <ringGeometry args={[0.4, 0.5, 32]} />
-                <meshStandardMaterial
-                    color="#FFD700"
-                    emissive="#FFD700"
-                    emissiveIntensity={0}
-                    transparent
-                    opacity={isCurrentTurn ? 0.8 : 0}
-                />
+                <meshStandardMaterial color="#FFD700" emissive="#FFD700" emissiveIntensity={0} transparent opacity={isCurrentTurn ? 0.8 : 0} />
             </mesh>
         </group>
     );
 }
 
-function CharacterAccessory({
-    character,
-    eliminated,
-    accentColor,
-}: {
-    character: Character;
-    eliminated: boolean;
-    accentColor: string;
-}) {
+function CharacterAccessory({ character, eliminated, accentColor }: { character: Character; eliminated: boolean; accentColor: string; }) {
     const color = eliminated ? '#555' : accentColor;
-
     switch (character) {
         case Character.Duke:
         case Character.Bureaucrat:
         case Character.Speculator:
-            // Crown — 3 points
             return (
                 <group position={[0, 1.38, 0]}>
                     <mesh>
@@ -178,9 +112,7 @@ function CharacterAccessory({
                     ))}
                 </group>
             );
-
         case Character.Assassin:
-            // Dagger on back
             return (
                 <group position={[0.15, 1.05, -0.1]} rotation={[0, 0, -0.4]}>
                     <mesh>
@@ -193,9 +125,7 @@ function CharacterAccessory({
                     </mesh>
                 </group>
             );
-
         case Character.Captain:
-            // Sailor hat
             return (
                 <group position={[0, 1.35, 0]}>
                     <mesh>
@@ -208,18 +138,14 @@ function CharacterAccessory({
                     </mesh>
                 </group>
             );
-
         case Character.Contessa:
-            // Tiara
             return (
                 <mesh position={[0, 1.35, 0.05]}>
                     <torusGeometry args={[0.12, 0.02, 8, 16, Math.PI]} />
                     <meshStandardMaterial color={color} metalness={0.6} roughness={0.2} />
                 </mesh>
             );
-
         case Character.Inquisitor:
-            // Magnifying glass
             return (
                 <group position={[0.2, 1.0, 0.1]} rotation={[0, 0, -0.5]}>
                     <mesh>
@@ -232,9 +158,7 @@ function CharacterAccessory({
                     </mesh>
                 </group>
             );
-
         case Character.Jester:
-            // Jester hat (2 prongs)
             return (
                 <group position={[0, 1.35, 0]}>
                     {[-1, 1].map((side) => (
@@ -251,9 +175,7 @@ function CharacterAccessory({
                     ))}
                 </group>
             );
-
         case Character.Socialist:
-            // Raised fist
             return (
                 <group position={[0, 1.4, 0]}>
                     <mesh>
@@ -266,9 +188,7 @@ function CharacterAccessory({
                     </mesh>
                 </group>
             );
-
         default:
-            // Ambassador and default — scroll
             return (
                 <group position={[0.18, 1.0, 0.05]} rotation={[0, 0, -0.3]}>
                     <mesh>
