@@ -1,20 +1,20 @@
 import * as THREE from 'three';
 
-// Procedural Wood Grain Texture
+// Procedural Wood Grain Texture - BRIGHTER
 function getWoodTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 256;
     canvas.height = 256;
     const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#2a1a05';
+    ctx.fillStyle = '#4a2c1a'; // Much lighter wood
     ctx.fillRect(0, 0, 256, 256);
-    ctx.strokeStyle = '#3d2b1f';
+    ctx.strokeStyle = '#5d3d2a';
     ctx.lineWidth = 2;
     for (let i = 0; i < 40; i++) {
         ctx.beginPath();
         const y = Math.random() * 256;
         ctx.moveTo(0, y);
-        ctx.bezierCurveTo(80, y + 10, 160, y - 10, 256, y);
+        ctx.bezierCurveTo(80, y + 15, 160, y - 15, 256, y);
         ctx.stroke();
     }
     const tex = new THREE.CanvasTexture(canvas);
@@ -23,15 +23,15 @@ function getWoodTexture() {
     return tex;
 }
 
-// Procedural Brick Texture
+// Procedural Brick Texture - BRIGHTER
 function getBrickTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 256;
     canvas.height = 256;
     const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#3d2218';
+    ctx.fillStyle = '#6d3d33'; // Brighter bricks
     ctx.fillRect(0, 0, 256, 256);
-    ctx.strokeStyle = '#1a0d0a';
+    ctx.strokeStyle = '#2a1a16';
     ctx.lineWidth = 2;
     for (let y = 0; y < 256; y += 32) {
         ctx.beginPath();
@@ -111,25 +111,19 @@ export function WallSconce({ position, rotation = [0, 0, 0] }: { position: [numb
                 <boxGeometry args={[0.1, 0.4, 0.05]} />
                 <meshStandardMaterial color="#1a0f05" metalness={0.6} roughness={0.3} />
             </mesh>
-            <mesh position={[0, 0.1, 0.15]}>
-                <boxGeometry args={[0.03, 0.03, 0.25]} />
-                <meshStandardMaterial color="#1a0f05" metalness={0.6} />
-            </mesh>
-            <mesh position={[0, 0.2, 0.25]}>
-                <sphereGeometry args={[0.1, 12, 12]} />
+            <mesh position={[0, 0.1, 0.2]}>
+                <sphereGeometry args={[0.08, 8, 8]} />
                 <meshStandardMaterial
                     color="#ffd27d"
-                    emissive="#ff8c00"
-                    emissiveIntensity={3}
-                    transparent
-                    opacity={0.8}
+                    emissive="#ffcc33"
+                    emissiveIntensity={2}
                 />
             </mesh>
             <pointLight
-                position={[0, 0.2, 0.3]}
-                intensity={2.0}
-                color="#ff8c00"
-                distance={6}
+                position={[0, 0.1, 0.3]}
+                intensity={2.5}  // Increased intensity
+                color="#ffaa44"
+                distance={10}
             />
         </group>
     );
