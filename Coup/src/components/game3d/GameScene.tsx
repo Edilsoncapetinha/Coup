@@ -6,6 +6,7 @@ import PlayerModel from './PlayerModel';
 import Card3D from './Card3D';
 import CoinPile from './CoinPile';
 import { getPlayerPositions, getCardPositions, getCoinPosition, getHumanCameraPos } from './TablePositions';
+import { Bottle, Book, Barrel, WallSconce } from './Props';
 import { type GameState } from '../../game/types';
 
 interface GameSceneProps {
@@ -52,45 +53,35 @@ export default function GameScene({ gameState, myPlayerId }: GameSceneProps) {
                 camera.lookAt(cam.lookAt);
             }}
         >
-            {/* ═══ CASINO LIGHTING SETUP ═══ */}
+            {/* ═══ SPEAKEASY CHIAROSCURO LIGHTING ═══ */}
 
-            {/* Warm ambient — like indoor casino */}
-            <ambientLight intensity={0.5} color="#ffe8cc" />
+            {/* Very low ambient for "mystery" */}
+            <ambientLight intensity={0.15} color="#ffd699" />
 
-            {/* Main overhead pendant lamp on table */}
+            {/* Main overhead pendant lamp - focal point */}
             <spotLight
                 position={[0, 6, 0]}
-                angle={0.9}
-                penumbra={0.4}
-                intensity={3.5}
-                color="#ffe4b5"
+                angle={0.8}
+                penumbra={0.6}
+                intensity={5.5}
+                color="#fff1d0"
                 castShadow
                 shadow-mapSize-width={2048}
                 shadow-mapSize-height={2048}
-                shadow-bias={-0.0005}
+                shadow-bias={-0.0001}
             />
 
-            {/* Warm fill lights from sides — like wall sconces */}
-            <pointLight position={[6, 3, 0]} intensity={0.6} color="#ffcc88" distance={15} />
-            <pointLight position={[-6, 3, 0]} intensity={0.6} color="#ffcc88" distance={15} />
-            <pointLight position={[0, 3, 5]} intensity={0.4} color="#ffd699" distance={15} />
-            <pointLight position={[0, 3, -5]} intensity={0.4} color="#ffd699" distance={15} />
+            {/* Subtle bounce light from table to illuminate characters */}
+            <pointLight position={[0, 1.2, 0]} intensity={0.8} color="#1a5c3a" distance={5} />
 
-            {/* Subtle top fill for visibility */}
-            <directionalLight position={[0, 8, 3]} intensity={0.4} color="#fff5e6" />
+            {/* Speakeasy atmosphere fog — thick and dark */}
+            <fog attach="fog" args={['#0a0806', 8, 25]} />
 
-            {/* Colored accent lights — casino neon feel */}
-            <pointLight position={[8, 2, 8]} intensity={0.3} color="#ff4444" distance={12} />
-            <pointLight position={[-8, 2, -8]} intensity={0.3} color="#4488ff" distance={12} />
+            {/* Background — almost black with warm tint */}
+            <color attach="background" args={['#0a0806']} />
 
-            {/* Casino atmosphere fog — warm and subtle */}
-            <fog attach="fog" args={['#1a1410', 12, 30]} />
-
-            {/* Background — dark casino interior */}
-            <color attach="background" args={['#1a1410']} />
-
-            {/* ═══ CASINO ENVIRONMENT ═══ */}
-            <CasinoRoom />
+            {/* ═══ SPEAKEASY ENVIRONMENT ═══ */}
+            <SpeakeasyRoom />
 
             {/* ═══ TABLE ═══ */}
             <PokerTable />
@@ -166,143 +157,107 @@ export default function GameScene({ gameState, myPlayerId }: GameSceneProps) {
 }
 
 /**
- * Casino room — walls, carpet, decorative elements
+ * Speakeasy room — mahogany walls, brick accents, shelves with props
  */
-function CasinoRoom() {
+function SpeakeasyRoom() {
     return (
         <group>
-            {/* ═══ FLOOR — rich casino carpet ═══ */}
+            {/* ═══ FLOOR — dark aged wood planks ═══ */}
             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
-                <planeGeometry args={[30, 30]} />
+                <planeGeometry args={[40, 40]} />
                 <meshStandardMaterial
-                    color="#1a0f08"
-                    roughness={0.85}
+                    color="#140d08"
+                    roughness={0.9}
                     metalness={0.0}
                 />
             </mesh>
 
-            {/* Carpet pattern — decorative diamond center */}
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.005, 0]}>
-                <ringGeometry args={[5, 6, 4]} />
-                <meshStandardMaterial
-                    color="#2a1510"
-                    roughness={0.9}
-                    transparent
-                    opacity={0.5}
-                />
-            </mesh>
-
-            {/* ═══ BACK WALL ═══ */}
-            <mesh position={[0, 4, -12]} receiveShadow>
-                <planeGeometry args={[30, 10]} />
-                <meshStandardMaterial color="#1e1410" roughness={0.7} />
-            </mesh>
-
-            {/* Wall wainscoting (lower panel) */}
-            <mesh position={[0, 1.5, -11.98]}>
-                <planeGeometry args={[30, 3]} />
-                <meshStandardMaterial color="#2a1a10" roughness={0.5} metalness={0.05} />
-            </mesh>
-
-            {/* Gold molding strip */}
-            <mesh position={[0, 3, -11.96]}>
-                <planeGeometry args={[30, 0.08]} />
-                <meshStandardMaterial
-                    color="#C5A028"
-                    roughness={0.2}
-                    metalness={0.6}
-                    emissive="#8B6914"
-                    emissiveIntensity={0.1}
-                />
-            </mesh>
-
-            {/* ═══ SIDE WALLS ═══ */}
-            <mesh position={[-12, 4, 0]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
-                <planeGeometry args={[30, 10]} />
-                <meshStandardMaterial color="#1e1410" roughness={0.7} />
-            </mesh>
-            <mesh position={[12, 4, 0]} rotation={[0, -Math.PI / 2, 0]} receiveShadow>
-                <planeGeometry args={[30, 10]} />
-                <meshStandardMaterial color="#1e1410" roughness={0.7} />
-            </mesh>
-
-            {/* ═══ WALL SCONCES (decorative lights on walls) ═══ */}
-            {[-7, -3, 3, 7].map((x) => (
-                <group key={`sconce-back-${x}`} position={[x, 3.5, -11.9]}>
-                    {/* Sconce bracket */}
-                    <mesh>
-                        <boxGeometry args={[0.15, 0.3, 0.1]} />
-                        <meshStandardMaterial color="#C5A028" roughness={0.3} metalness={0.6} />
-                    </mesh>
-                    {/* Sconce glow */}
-                    <mesh position={[0, 0.15, 0.05]}>
-                        <sphereGeometry args={[0.08, 8, 8]} />
-                        <meshStandardMaterial
-                            color="#ffe4b5"
-                            emissive="#ffcc66"
-                            emissiveIntensity={1.5}
-                        />
-                    </mesh>
-                    {/* Sconce light */}
-                    <pointLight position={[0, 0.15, 0.3]} intensity={0.15} color="#ffcc66" distance={4} />
-                </group>
-            ))}
-
-            {/* ═══ SIDE WALL SCONCES ═══ */}
-            {[-5, 0, 5].map((z) => (
-                <group key={`sconce-left-${z}`}>
-                    <group position={[-11.9, 3.5, z]} rotation={[0, Math.PI / 2, 0]}>
-                        <mesh>
-                            <boxGeometry args={[0.15, 0.3, 0.1]} />
-                            <meshStandardMaterial color="#C5A028" roughness={0.3} metalness={0.6} />
-                        </mesh>
-                        <mesh position={[0, 0.15, 0.05]}>
-                            <sphereGeometry args={[0.08, 8, 8]} />
-                            <meshStandardMaterial color="#ffe4b5" emissive="#ffcc66" emissiveIntensity={1.5} />
-                        </mesh>
-                        <pointLight position={[0, 0.15, 0.3]} intensity={0.12} color="#ffcc66" distance={4} />
-                    </group>
-                    <group position={[11.9, 3.5, z]} rotation={[0, -Math.PI / 2, 0]}>
-                        <mesh>
-                            <boxGeometry args={[0.15, 0.3, 0.1]} />
-                            <meshStandardMaterial color="#C5A028" roughness={0.3} metalness={0.6} />
-                        </mesh>
-                        <mesh position={[0, 0.15, 0.05]}>
-                            <sphereGeometry args={[0.08, 8, 8]} />
-                            <meshStandardMaterial color="#ffe4b5" emissive="#ffcc66" emissiveIntensity={1.5} />
-                        </mesh>
-                        <pointLight position={[0, 0.15, 0.3]} intensity={0.12} color="#ffcc66" distance={4} />
-                    </group>
-                </group>
-            ))}
-
-            {/* ═══ CEILING ═══ */}
-            <mesh position={[0, 8, 0]} rotation={[Math.PI / 2, 0, 0]}>
-                <planeGeometry args={[30, 30]} />
-                <meshStandardMaterial color="#0f0a06" roughness={0.9} />
-            </mesh>
-
-            {/* ═══ DECORATIVE NEON "COUP" SIGN on back wall ═══ */}
-            <group position={[0, 5.5, -11.85]}>
-                {/* Sign backing */}
-                <mesh>
-                    <planeGeometry args={[3, 0.8]} />
-                    <meshStandardMaterial color="#0a0604" roughness={0.9} />
+            {/* Back Wall (behind avatars) */}
+            <group position={[0, 0, -10]}>
+                {/* Lower mahogany paneling */}
+                <mesh position={[0, 1.5, 0]} receiveShadow>
+                    <planeGeometry args={[30, 3]} />
+                    <meshStandardMaterial color="#2b1a10" roughness={0.4} metalness={0.1} />
                 </mesh>
-                {/* Neon glow effect */}
-                <mesh position={[0, 0, 0.01]}>
-                    <planeGeometry args={[2.6, 0.5]} />
-                    <meshStandardMaterial
-                        color="#ff3333"
-                        emissive="#ff2222"
-                        emissiveIntensity={2.0}
-                        transparent
-                        opacity={0.8}
-                    />
+
+                {/* Upper brick section */}
+                <mesh position={[0, 6.5, -0.1]} receiveShadow>
+                    <planeGeometry args={[30, 7]} />
+                    <meshStandardMaterial color="#3d2218" roughness={1} />
                 </mesh>
-                {/* Neon light cast */}
-                <pointLight position={[0, 0, 0.5]} intensity={0.5} color="#ff3333" distance={5} />
+
+                {/* Shelves system */}
+                <group position={[0, 0, 0.2]}>
+                    {[2, 3.5, 5, 6.5].map((y) => (
+                        <mesh key={y} position={[0, y, 0]} receiveShadow castShadow>
+                            <boxGeometry args={[20, 0.05, 0.4]} />
+                            <meshStandardMaterial color="#1a0f08" roughness={0.8} />
+                        </mesh>
+                    ))}
+
+                    {/* Populating shelves with items (Bottle clusters and Books) */}
+                    {/* ROW 1 (y=2) */}
+                    <Bottle position={[2, 2.2, 0]} color="#4e3b31" />
+                    <Bottle position={[2.2, 2.2, 0]} color="#1a3d31" type="tall" />
+                    <Bottle position={[2.4, 2.2, 0]} color="#7a4a2a" />
+
+                    <Book position={[-3, 2.2, 0]} color="#3d1a1a" />
+                    <Book position={[-3.1, 2.22, 0]} color="#1a2b3d" rotation={[0, 0.05, 0]} />
+
+                    {/* ROW 2 (y=3.5) */}
+                    <Bottle position={[-5, 3.7, 0]} color="#5a3a1a" />
+                    <Bottle position={[-4.8, 3.7, 0]} color="#2a4a1a" type="flat" />
+                    <Book position={[4, 3.71, 0]} color="#4a4a1a" />
+                    <Book position={[4.1, 3.72, 0]} color="#1a1a1a" />
+                    <Book position={[4.2, 3.7, 0]} color="#3d2a10" />
+
+                    {/* ROW 3 (y=5) */}
+                    <Bottle position={[0, 5.2, 0]} color="#c06014" type="tall" />
+                    <Bottle position={[0.3, 5.2, 0]} color="#1a1a1a" />
+
+                    {/* ROW 4 (y=6.5) */}
+                    <Book position={[-1, 6.7, 0]} color="#222" />
+                </group>
+
+                {/* Wall Sconces - Back wall */}
+                <WallSconce position={[-8, 3.5, 0.1]} />
+                <WallSconce position={[8, 3.5, 0.1]} />
             </group>
+
+            {/* Left Wall */}
+            <group position={[-12, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+                <mesh position={[0, 5, 0]} receiveShadow>
+                    <planeGeometry args={[30, 10]} />
+                    <meshStandardMaterial color="#2b1a10" roughness={0.5} />
+                </mesh>
+                {/* Bar counter prop (simplified) */}
+                <mesh position={[0, 0.6, 0.8]} castShadow receiveShadow>
+                    <boxGeometry args={[10, 1.2, 1.5]} />
+                    <meshStandardMaterial color="#1a0f08" roughness={0.3} metalness={0.1} />
+                </mesh>
+                <WallSconce position={[0, 3.5, 0.1]} />
+            </group>
+
+            {/* Right Wall */}
+            <group position={[12, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
+                <mesh position={[0, 5, 0]} receiveShadow>
+                    <planeGeometry args={[30, 10]} />
+                    <meshStandardMaterial color="#2b1a10" roughness={0.5} />
+                </mesh>
+                {/* Barrel pile */}
+                <group position={[0, 0.6, 1]}>
+                    <Barrel position={[0, 0, 0]} />
+                    <Barrel position={[1, 0, 0.2]} rotation={[0, 0.4, 0]} />
+                    <Barrel position={[0.5, 1, 0]} rotation={[Math.PI / 2, 0, 0]} />
+                </group>
+                <WallSconce position={[0, 3.5, 0.1]} />
+            </group>
+
+            {/* Ceiling */}
+            <mesh position={[0, 10, 0]} rotation={[Math.PI / 2, 0, 0]}>
+                <planeGeometry args={[40, 40]} />
+                <meshStandardMaterial color="#050403" roughness={1} />
+            </mesh>
         </group>
     );
 }
