@@ -38,31 +38,20 @@ export default function GameScene({ gameState, myPlayerId }: GameSceneProps) {
                 position: [cam.position.x, cam.position.y, cam.position.z],
                 fov: 50,
                 near: 0.1,
-                far: 100,
+                far: 150,
             }}
             gl={{
                 antialias: true,
                 toneMapping: THREE.ACESFilmicToneMapping,
-                toneMappingExposure: 1.5 // Balanced exposure for Standard materials
+                toneMappingExposure: 2.2 // Back to high exposure
             }}
             style={{ position: 'absolute', inset: 0 }}
             onCreated={({ camera }) => camera.lookAt(cam.lookAt)}
         >
-            {/* ATMOSPHERIC DYNAMIC LIGHTING */}
-            <ambientLight intensity={0.4} color="#ffd699" />
-            <spotLight
-                position={[0, 8, 0]}
-                angle={0.8}
-                penumbra={0.7}
-                intensity={20}
-                color="#fff1d0"
-                castShadow
-                shadow-mapSize-width={1024}
-                shadow-mapSize-height={1024}
-            />
-            <pointLight position={[0, 1.5, 0]} intensity={3} color="#1a5c3a" distance={8} />
-            <color attach="background" args={['#070503']} />
-            <fog attach="fog" args={['#070503', 10, 30]} />
+            {/* LIGHTS (Still here for props/players, but walls ignore them) */}
+            <ambientLight intensity={1.5} color="#ffffff" />
+            <spotLight position={[0, 12, 0]} angle={0.8} intensity={20} castShadow />
+            <color attach="background" args={['#1a1512']} />
 
             <SpeakeasyRoom />
             <PokerTable />
@@ -100,91 +89,89 @@ export default function GameScene({ gameState, myPlayerId }: GameSceneProps) {
 function SpeakeasyRoom() {
     return (
         <group>
-            {/* SOLID FLOOR */}
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
-                <planeGeometry args={[20, 20]} />
-                <meshStandardMaterial color="#2d1a08" roughness={0.8} map={woodTex} />
+            {/* FLOOR - Basic Wood */}
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
+                <planeGeometry args={[14, 18]} />
+                <meshBasicMaterial color="#ffffff" map={woodTex} side={THREE.DoubleSide} />
             </mesh>
 
-            {/* WALLS GROUP */}
-            <group>
-                {/* NORTH WALL (Behind opponents) - Intimate Z=3.5 */}
-                <group position={[0, 0, 3.5]}>
-                    {/* Lower Wainscot (Wood) */}
-                    <mesh position={[0, 1.5, 0]} receiveShadow>
-                        <planeGeometry args={[14, 3]} />
-                        <meshStandardMaterial color="#3d2b1f" roughness={0.4} map={woodTex} />
-                    </mesh>
-                    {/* Upper Wall (Brick) */}
-                    <mesh position={[0, 6.5, -0.05]} receiveShadow>
-                        <planeGeometry args={[14, 7]} />
-                        <meshStandardMaterial color="#4d2e24" roughness={1} map={brickTex} />
-                    </mesh>
-                    {/* Architectural Trim (Molding) */}
-                    <mesh position={[0, 3, 0.05]} receiveShadow>
-                        <boxGeometry args={[14.2, 0.15, 0.1]} />
-                        <meshStandardMaterial color="#1a0f05" />
-                    </mesh>
-                    <mesh position={[0, 0.1, 0.1]} receiveShadow>
-                        <boxGeometry args={[14.2, 0.2, 0.15]} />
-                        <meshStandardMaterial color="#1a0f05" />
-                    </mesh>
+            {/* NORTH WALL (Behind opponents) - Z=3.0, Basic Materials */}
+            <group position={[0, 0, 3.0]}>
+                {/* Wood lower paneling */}
+                <mesh position={[0, 2, 0]}>
+                    <planeGeometry args={[14, 4]} />
+                    <meshBasicMaterial color="#ffffff" map={woodTex} side={THREE.DoubleSide} />
+                </mesh>
+                {/* Brick upper */}
+                <mesh position={[0, 8, -0.05]}>
+                    <planeGeometry args={[14, 8]} />
+                    <meshBasicMaterial color="#ffffff" map={brickTex} side={THREE.DoubleSide} />
+                </mesh>
 
-                    {/* Props */}
-                    <group position={[0, 0, 0.1]}>
-                        <mesh position={[0, 4, 0]} castShadow receiveShadow>
-                            <boxGeometry args={[8, 0.05, 0.4]} />
-                            <meshStandardMaterial color="#1a0f05" map={woodTex} />
-                        </mesh>
-                        <Bottle position={[1.5, 4.3, 0]} color="#7a4a2a" />
-                        <Book position={[-1, 4.3, 0]} color="#3d1a1a" />
-                    </group>
-                    <WallSconce position={[-5, 5, 0.1]} />
-                    <WallSconce position={[5, 5, 0.1]} />
+                {/* Architectural Trims (Basic Material for visibility) */}
+                <mesh position={[0, 4, 0.05]}>
+                    <boxGeometry args={[14.2, 0.2, 0.1]} />
+                    <meshBasicMaterial color="#1a0f05" />
+                </mesh>
+                <mesh position={[0, 0.1, 0.1]}>
+                    <boxGeometry args={[14.2, 0.3, 0.15]} />
+                    <meshBasicMaterial color="#1a0f05" />
+                </mesh>
+
+                {/* Shelves for props */}
+                <group position={[0, 0, 0.1]}>
+                    <mesh position={[0, 4.5, 0]}>
+                        <boxGeometry args={[12, 0.05, 0.5]} />
+                        <meshBasicMaterial color="#1a0f05" />
+                    </mesh>
+                    <Bottle position={[2, 4.8, 0]} color="#7a4a2a" />
+                    <Bottle position={[-2, 4.8, 0]} color="#2a5c4a" type="tall" />
                 </group>
 
-                {/* SIDE WALLS - Very Tight X=±5.8 */}
-                <group position={[-6, 0, -2]} rotation={[0, Math.PI / 2, 0]}>
-                    <mesh position={[0, 5, 0]} receiveShadow>
-                        <planeGeometry args={[12, 10]} />
-                        <meshStandardMaterial color="#3d2b1f" roughness={0.6} map={woodTex} />
-                    </mesh>
-                    {/* Framing Pillars */}
-                    <mesh position={[6, 5, 0.1]}>
-                        <boxGeometry args={[0.3, 10, 0.2]} />
-                        <meshStandardMaterial color="#1a0f05" />
-                    </mesh>
-                    <WallSconce position={[0, 5, 0.1]} />
-                </group>
+                <WallSconce position={[-5, 5.5, 0.1]} />
+                <WallSconce position={[5, 5.5, 0.1]} />
+            </group>
 
-                <group position={[6, 0, -2]} rotation={[0, -Math.PI / 2, 0]}>
-                    <mesh position={[0, 5, 0]} receiveShadow>
-                        <planeGeometry args={[12, 10]} />
-                        <meshStandardMaterial color="#3d2b1f" roughness={0.6} map={woodTex} />
-                    </mesh>
-                    {/* Framing Pillars */}
-                    <mesh position={[-6, 5, 0.1]}>
-                        <boxGeometry args={[0.3, 10, 0.2]} />
-                        <meshStandardMaterial color="#1a0f05" />
-                    </mesh>
-                    <Barrel position={[0, 0.6, 1.5]} />
-                    <WallSconce position={[0, 5, 0.1]} />
-                </group>
+            {/* SIDE WALLS - X=±6.0, Basic Materials */}
+            <group position={[-6, 0, -2]} rotation={[0, Math.PI / 2, 0]}>
+                <mesh position={[0, 5, 0]}>
+                    <planeGeometry args={[12, 12]} />
+                    <meshBasicMaterial color="#ffffff" map={woodTex} side={THREE.DoubleSide} />
+                </mesh>
+                {/* Vertical Pillars for room structure */}
+                <mesh position={[6, 5, 0.1]}>
+                    <boxGeometry args={[0.4, 12, 0.2]} />
+                    <meshBasicMaterial color="#110a05" />
+                </mesh>
+                <WallSconce position={[0, 6, 0.1]} />
+            </group>
 
-                {/* SOUTH WALL (Behind Player) */}
-                <group position={[0, 0, -8]}>
-                    <mesh position={[0, 5, 0]} receiveShadow>
-                        <planeGeometry args={[14, 10]} />
-                        <meshStandardMaterial color="#3d2b1f" roughness={0.8} map={woodTex} />
-                    </mesh>
-                </group>
+            <group position={[6, 0, -2]} rotation={[0, -Math.PI / 2, 0]}>
+                <mesh position={[0, 5, 0]}>
+                    <planeGeometry args={[12, 12]} />
+                    <meshBasicMaterial color="#ffffff" map={woodTex} side={THREE.DoubleSide} />
+                </mesh>
+                {/* Vertical Pillars */}
+                <mesh position={[-6, 5, 0.1]}>
+                    <boxGeometry args={[0.4, 12, 0.2]} />
+                    <meshBasicMaterial color="#110a05" />
+                </mesh>
+                <WallSconce position={[0, 6, 0.1]} />
+            </group>
 
-                {/* CEILING */}
-                <mesh position={[0, 10, 0]} rotation={[Math.PI / 2, 0, 0]}>
-                    <planeGeometry args={[14, 14]} />
-                    <meshStandardMaterial color="#0a0806" roughness={1} />
+            {/* SOUTH WALL (Behind Player) - Z=-8.5 */}
+            <group position={[0, 0, -8.5]}>
+                <mesh position={[0, 6, 0]}>
+                    <planeGeometry args={[14, 12]} />
+                    <meshBasicMaterial color="#ffffff" map={woodTex} side={THREE.DoubleSide} />
                 </mesh>
             </group>
+
+            {/* CEILING */}
+            <mesh position={[0, 11, 0]} rotation={[Math.PI / 2, 0, 0]}>
+                <planeGeometry args={[14, 18]} />
+                <meshBasicMaterial color="#050403" side={THREE.DoubleSide} />
+            </mesh>
         </group>
     );
 }
