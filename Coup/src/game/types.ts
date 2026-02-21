@@ -142,6 +142,7 @@ export interface GameState {
     coupRedirectChain: string[];
     coupRedirectSourceId: string | null;
     cardSelectionReason?: 'challenge-penalty' | 'action-effect';
+    pendingSecondCardLoss?: boolean;
 }
 
 // ── Definição Declarativa de Personagem ───────────────────

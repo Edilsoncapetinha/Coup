@@ -348,9 +348,19 @@ export function challengeAction(state: GameState, challengerId: string): GameSta
 
             if (newState.phase === GamePhase.GameOver) return newState;
 
-            // Assassinate rule: If challenge fails, skip block phase and resolve
+            // Assassinate rule: If challenge fails, trigger double loss
             if (state.pendingAction.type === ActionType.Assassinate) {
-                return resolveAction(newState);
+                const target = getPlayerById(newState, challengerId);
+                const aliveCount = getAliveInfluence(target).length;
+                if (aliveCount > 0) {
+                    return {
+                        ...newState,
+                        phase: GamePhase.ResolvingAction,
+                        pendingSecondCardLoss: true,
+                        log: [...newState.log, createLogEntry(`Dano duplo! ${target.name} perderá uma segunda carta pelo assassinato.`, 'action')],
+                    };
+                }
+                return advanceTurn(newState);
             }
 
             // For other actions, check if they can be blocked
@@ -605,8 +615,18 @@ export function challengeBlock(state: GameState, challengerId: string): GameStat
         if (newState.phase === GamePhase.GameOver) return newState;
 
         // Blocker lost their last card from failed block challenge.
-        // For Assassinate: blocker already lost a card, don't make target lose another.
+        // For Assassinate: trigger double loss if they still have influence
         if (state.pendingAction?.type === ActionType.Assassinate) {
+            const target = getPlayerById(newState, blocker.id);
+            const aliveCount = getAliveInfluence(target).length;
+            if (aliveCount > 0) {
+                return {
+                    ...newState,
+                    phase: GamePhase.ResolvingAction,
+                    pendingSecondCardLoss: true,
+                    log: [...newState.log, createLogEntry(`Dano duplo! ${target.name} perderá uma segunda carta pelo assassinato.`, 'action')],
+                };
+            }
             return advanceTurn(newState);
         }
 
@@ -614,6 +634,7 @@ export function challengeBlock(state: GameState, challengerId: string): GameStat
     }
 
     // Blocker has 2+ cards, needs to choose which to lose
+    console.log('[DEBUG-ENGINE] challengeBlock fails, blocker needs to choose. Blocker:', blocker.id, 'TargetId:', state.pendingAction?.targetPlayerId);
     return {
         ...newState,
         phase: GamePhase.AwaitingCardSelection,
@@ -647,6 +668,7 @@ function replaceRevealedCard(state: GameState, playerId: string, character: Char
                 ),
             };
         }),
+        log: [...state.log, createLogEntry(`${player.name} devolveu a carta ao baralho e comprou uma nova.`, 'exchange')],
     };
 }
 
@@ -822,7 +844,7 @@ export function resolveAction(state: GameState): GameState {
             }
 
             // Build new influence cards (new drawn + existing revealed)
-            const newInfluence = [
+            const newInfluence: InfluenceCard[] = [
                 ...newCards.map((c) => ({ character: c, isRevealed: false })),
                 ...actor.influenceCards.filter((c) => c.isRevealed),
             ];
@@ -1172,7 +1194,7 @@ export function resolveInquisitorChoice(
 
     return {
         ...state,
-        phase: GamePhase.AwaitingExamineDecision,
+        phase: GamePhase.AwaitingInquisitorChoice,
         pendingAction: {
             ...state.pendingAction,
             type: ActionType.Examine,
@@ -1205,50 +1227,71 @@ export function selectCardToLose(state: GameState, playerId: string, cardIndex: 
 
             // Assassinate rule:
             if (state.pendingAction.type === ActionType.Assassinate) {
-                // If this was a challenge penalty from a block (blocker lied),
-                // don't resolve the assassination (only 1 card lost total).
-                if (state.cardSelectionReason === 'challenge-penalty' && state.pendingBlock) {
+                console.log('[DEBUG-ENGINE] selectCardToLose Assassinate block entered. Reason:', state.cardSelectionReason, 'playerId:', playerId, 'targetId:', state.pendingAction.targetPlayerId);
+                // If this was a challenge penalty during an assassination attempt
+                // it triggers a double loss: 1 for challenge, and 1 for assassination effect that was not blocked.
+                if (state.cardSelectionReason === 'challenge-penalty') {
+                    const targetId = state.pendingAction.targetPlayerId;
+
+                    // Only trigger second loss if the person who just lost a card is the target
+                    // (if someone else challenged and lost, the target still takes regular damage later)
+                    if (targetId === playerId) {
+                        const target = getPlayerById(newState, targetId);
+                        const aliveCount = getAliveInfluence(target).length;
+                        console.log('[DEBUG-ENGINE] Double loss candidate. aliveCount:', aliveCount);
+
+                        if (aliveCount > 0) {
+                            console.log('[DEBUG-ENGINE] TRIGERRED PENDING SECOND LOSS');
+                            return {
+                                ...newState,
+                                phase: GamePhase.ResolvingAction,
+                                pendingSecondCardLoss: true,
+                                log: [...newState.log, createLogEntry(`Dano duplo! ${target.name} perderá uma segunda carta pelo assassinato.`, 'action')],
+                            };
+                        }
+                    }
+
+                    console.log('[DEBUG-ENGINE] Double loss skipped. Advancing turn.');
                     return advanceTurn({ ...newState, cardSelectionReason: undefined });
                 }
+                console.log('[DEBUG-ENGINE] No challenge penalty. Resolving action.');
                 // Otherwise (challenge on action where actor had assassin),
                 // resolve the action (challenger loses 1 for challenge, target loses 1 for assassination).
                 return resolveAction(newState);
             }
+        }
 
-            // Fix for Coup Double Damage: Coup damage is final UNLESS this was just a challenge penalty
-            if (state.pendingAction.type === ActionType.Coup) {
-                if (state.cardSelectionReason === 'challenge-penalty') {
-                    // If redirection was active, the challenge was for the redirection, Coup stands
-                    if (state.coupRedirectChain.length > 0) {
-                        return resolveAction(newState);
-                    }
+        // Fix for Coup Double Damage: Coup damage is final UNLESS this was just a challenge penalty
+        if (state.pendingAction.type === ActionType.Coup) {
+            if (state.cardSelectionReason === 'challenge-penalty') {
+                // If redirection was active, the challenge was for the redirection, Coup stands
+                if (state.coupRedirectChain.length > 0) {
+                    return resolveAction(newState);
                 }
-                return advanceTurn({ ...newState, cardSelectionReason: undefined });
             }
-
-            const canBeBlocked = isActionBlockable(
-                state.pendingAction.type,
-                newState.config.enabledCharacters
-            );
-
-            if (canBeBlocked) {
-                return { ...newState, phase: GamePhase.AwaitingBlock, respondedPlayerIds: [] };
-            }
-
-            return resolveAction(newState);
+            return advanceTurn({ ...newState, cardSelectionReason: undefined });
         }
 
-        // Actor lost a card (challenge succeeded, action fails)
-        if (state.cardSelectionReason === 'challenge-penalty') {
-            // If redirection challenge fails, redirection stands and becomes the action.
-            // We need to allow resolveAction to proceed with the redirect.
-            if (state.coupRedirectChain.length > 0) {
-                return resolveAction(newState);
-            }
+        const canBeBlocked = isActionBlockable(
+            state.pendingAction.type,
+            newState.config.enabledCharacters
+        );
+
+        if (canBeBlocked) {
+            return { ...newState, phase: GamePhase.AwaitingBlock, respondedPlayerIds: [] };
         }
-        return advanceTurn({ ...newState, cardSelectionReason: undefined });
+
+        return resolveAction(newState);
     }
 
+    // Actor lost a card (challenge succeeded, action fails)
+    if (state.cardSelectionReason === 'challenge-penalty') {
+        // If redirection challenge fails, redirection stands and becomes the action.
+        // We need to allow resolveAction to proceed with the redirect.
+        if (state.coupRedirectChain.length > 0) {
+            return resolveAction(newState);
+        }
+    }
     return advanceTurn({ ...newState, cardSelectionReason: undefined });
 }
 

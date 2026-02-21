@@ -585,6 +585,20 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         }
     }, [gameState, updateState]);
 
+    // ── Delayed Resolution for Double Loss (Assassination) ──
+    useEffect(() => {
+        if (gameState?.pendingSecondCardLoss && gameState.phase === GamePhase.ResolvingAction) {
+            console.log('[DEBUG-DOUBLE-LOSS] Delay started...');
+
+            const timer = setTimeout(() => {
+                console.log('[DEBUG-DOUBLE-LOSS] Delay expired. Syncing resolved state.');
+                const finalState = resolveAction({ ...gameState, pendingSecondCardLoss: false });
+                updateState(finalState);
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [gameState, updateState]);
+
     const value: GameContextType = {
         gameState,
         startGame,
