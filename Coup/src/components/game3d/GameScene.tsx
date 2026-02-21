@@ -108,8 +108,8 @@ function SpeakeasyRoom() {
                 <meshBasicMaterial color="#ffffff" map={woodTex} side={THREE.DoubleSide} />
             </mesh>
 
-            {/* NORTH WALL - Bright Wood/Brick */}
-            <group position={[0, 0, 7]}>
+            {/* NORTH WALL (Behind opponents) - Moved closer to the table (Z=4.2) */}
+            <group position={[0, 0, 4.2]}>
                 {/* Wood lower */}
                 <mesh position={[0, 2.5, 0]}>
                     <planeGeometry args={[30, 5]} />
