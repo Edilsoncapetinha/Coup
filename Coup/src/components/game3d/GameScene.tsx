@@ -43,29 +43,29 @@ export default function GameScene({ gameState, myPlayerId }: GameSceneProps) {
                 position: [cam.position.x, cam.position.y, cam.position.z],
                 fov: 50,
                 near: 0.1,
-                far: 100,
+                far: 200, // Increased far plane
             }}
-            gl={{
-                antialias: true,
-                toneMapping: THREE.ACESFilmicToneMapping,
-                toneMappingExposure: 1.2
-            }}
+            gl={{ antialias: true }}
             style={{ position: 'absolute', inset: 0 }}
             onCreated={({ camera }) => {
                 camera.lookAt(cam.lookAt);
             }}
         >
-            {/* HIGH AMBIENT LIGHT FOR DIAGNOSTICS */}
-            <ambientLight intensity={1.0} color="#ffffff" />
+            <ambientLight intensity={1.0} />
+            <pointLight position={[0, 10, 0]} intensity={2.0} />
 
-            <spotLight
-                position={[0, 8, 0]}
-                angle={1.0}
-                intensity={15}
-                castShadow
-            />
+            {/* DIAGNOSTIC: LIGHT-INDEPENDENT BOX ROOM */}
+            <mesh position={[0, 5, 0]}>
+                <boxGeometry args={[50, 20, 50]} />
+                <meshBasicMaterial color="#4d2e1c" side={THREE.BackSide} />
+            </mesh>
 
-            <SpeakeasyRoom />
+            {/* DIAGNOSTIC: LIGHT-INDEPENDENT FLOOR */}
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.1, 0]}>
+                <planeGeometry args={[60, 60]} />
+                <meshBasicMaterial color="#2b1a10" side={THREE.DoubleSide} />
+            </mesh>
+
             <PokerTable />
 
             {orderedPlayers.map((player, idx) => {
@@ -95,37 +95,5 @@ export default function GameScene({ gameState, myPlayerId }: GameSceneProps) {
                 );
             })}
         </Canvas>
-    );
-}
-
-function SpeakeasyRoom() {
-    return (
-        <group>
-            {/* THE BOX ROOM - Guaranteed to be visible if you are inside it */}
-            <mesh position={[0, 5, 0]}>
-                <boxGeometry args={[30, 10, 30]} />
-                <meshStandardMaterial color="#4d2e1c" side={THREE.BackSide} roughness={1} />
-            </mesh>
-
-            {/* Simple Floor */}
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
-                <planeGeometry args={[40, 40]} />
-                <meshStandardMaterial color="#2b1a10" side={THREE.DoubleSide} />
-            </mesh>
-
-            {/* Back wall details - closer now */}
-            <group position={[0, 0, 10]}>
-                <mesh position={[0, 2, 0]} receiveShadow>
-                    <planeGeometry args={[20, 4]} />
-                    <meshStandardMaterial color="#3d1f0b" side={THREE.DoubleSide} />
-                </mesh>
-                <group position={[0, 0, -0.1]}>
-                    <WallSconce position={[-6, 4, 0]} rotation={[0, Math.PI, 0]} />
-                    <WallSconce position={[6, 4, 0]} rotation={[0, Math.PI, 0]} />
-                    <Bottle position={[2, 2.5, 0]} color="#7a4a2a" />
-                    <Bottle position={[-2, 2.5, 0]} color="#1a3d31" />
-                </group>
-            </group>
-        </group>
     );
 }
