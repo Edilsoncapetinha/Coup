@@ -55,15 +55,15 @@ export default function GameScene({ gameState, myPlayerId }: GameSceneProps) {
         >
             {/* ═══ SPEAKEASY CHIAROSCURO LIGHTING ═══ */}
 
-            {/* Very low ambient for "mystery" */}
-            <ambientLight intensity={0.15} color="#ffd699" />
+            {/* Increased ambient light for better visibility */}
+            <ambientLight intensity={0.35} color="#ffd699" />
 
-            {/* Main overhead pendant lamp - focal point */}
+            {/* Main overhead pendant lamp - high contrast focal point */}
             <spotLight
                 position={[0, 6, 0]}
                 angle={0.8}
                 penumbra={0.6}
-                intensity={5.5}
+                intensity={6.5}
                 color="#fff1d0"
                 castShadow
                 shadow-mapSize-width={2048}
@@ -72,21 +72,18 @@ export default function GameScene({ gameState, myPlayerId }: GameSceneProps) {
             />
 
             {/* Subtle bounce light from table to illuminate characters */}
-            <pointLight position={[0, 1.2, 0]} intensity={0.8} color="#1a5c3a" distance={5} />
+            <pointLight position={[0, 1.2, 0]} intensity={1.2} color="#1a5c3a" distance={6} />
 
-            {/* Speakeasy atmosphere fog — thick and dark */}
-            <fog attach="fog" args={['#0a0806', 8, 25]} />
+            {/* Speakeasy atmosphere fog — pushed further back */}
+            <fog attach="fog" args={['#0a0806', 15, 35]} />
 
-            {/* Background — almost black with warm tint */}
+            {/* Background — dark but tinted */}
             <color attach="background" args={['#0a0806']} />
 
-            {/* ═══ SPEAKEASY ENVIRONMENT ═══ */}
             <SpeakeasyRoom />
 
-            {/* ═══ TABLE ═══ */}
             <PokerTable />
 
-            {/* ═══ PLAYERS, CARDS & COINS ═══ */}
             {orderedPlayers.map((player, idx) => {
                 const pos = playerPositions[idx];
                 const cardPositions = getCardPositions(
@@ -124,7 +121,6 @@ export default function GameScene({ gameState, myPlayerId }: GameSceneProps) {
                 );
             })}
 
-            {/* ═══ OVERHEAD LAMP MODEL ═══ */}
             <group position={[0, 5.5, 0]}>
                 {/* Lamp shade */}
                 <mesh>
@@ -162,31 +158,19 @@ export default function GameScene({ gameState, myPlayerId }: GameSceneProps) {
 function SpeakeasyRoom() {
     return (
         <group>
-            {/* ═══ FLOOR — dark aged wood planks ═══ */}
             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
                 <planeGeometry args={[40, 40]} />
-                <meshStandardMaterial
-                    color="#140d08"
-                    roughness={0.9}
-                    metalness={0.0}
-                />
+                <meshStandardMaterial color="#140d08" roughness={0.9} metalness={0.0} />
             </mesh>
-
-            {/* Back Wall (behind avatars) */}
             <group position={[0, 0, -10]}>
-                {/* Lower mahogany paneling */}
                 <mesh position={[0, 1.5, 0]} receiveShadow>
                     <planeGeometry args={[30, 3]} />
                     <meshStandardMaterial color="#2b1a10" roughness={0.4} metalness={0.1} />
                 </mesh>
-
-                {/* Upper brick section */}
                 <mesh position={[0, 6.5, -0.1]} receiveShadow>
                     <planeGeometry args={[30, 7]} />
                     <meshStandardMaterial color="#3d2218" roughness={1} />
                 </mesh>
-
-                {/* Shelves system */}
                 <group position={[0, 0, 0.2]}>
                     {[2, 3.5, 5, 6.5].map((y) => (
                         <mesh key={y} position={[0, y, 0]} receiveShadow castShadow>
@@ -194,57 +178,39 @@ function SpeakeasyRoom() {
                             <meshStandardMaterial color="#1a0f08" roughness={0.8} />
                         </mesh>
                     ))}
-
-                    {/* Populating shelves with items (Bottle clusters and Books) */}
-                    {/* ROW 1 (y=2) */}
                     <Bottle position={[2, 2.2, 0]} color="#4e3b31" />
                     <Bottle position={[2.2, 2.2, 0]} color="#1a3d31" type="tall" />
                     <Bottle position={[2.4, 2.2, 0]} color="#7a4a2a" />
-
                     <Book position={[-3, 2.2, 0]} color="#3d1a1a" />
                     <Book position={[-3.1, 2.22, 0]} color="#1a2b3d" rotation={[0, 0.05, 0]} />
-
-                    {/* ROW 2 (y=3.5) */}
                     <Bottle position={[-5, 3.7, 0]} color="#5a3a1a" />
                     <Bottle position={[-4.8, 3.7, 0]} color="#2a4a1a" type="flat" />
                     <Book position={[4, 3.71, 0]} color="#4a4a1a" />
                     <Book position={[4.1, 3.72, 0]} color="#1a1a1a" />
                     <Book position={[4.2, 3.7, 0]} color="#3d2a10" />
-
-                    {/* ROW 3 (y=5) */}
                     <Bottle position={[0, 5.2, 0]} color="#c06014" type="tall" />
                     <Bottle position={[0.3, 5.2, 0]} color="#1a1a1a" />
-
-                    {/* ROW 4 (y=6.5) */}
                     <Book position={[-1, 6.7, 0]} color="#222" />
                 </group>
-
-                {/* Wall Sconces - Back wall */}
                 <WallSconce position={[-8, 3.5, 0.1]} />
                 <WallSconce position={[8, 3.5, 0.1]} />
             </group>
-
-            {/* Left Wall */}
             <group position={[-12, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
                 <mesh position={[0, 5, 0]} receiveShadow>
                     <planeGeometry args={[30, 10]} />
                     <meshStandardMaterial color="#2b1a10" roughness={0.5} />
                 </mesh>
-                {/* Bar counter prop (simplified) */}
                 <mesh position={[0, 0.6, 0.8]} castShadow receiveShadow>
                     <boxGeometry args={[10, 1.2, 1.5]} />
                     <meshStandardMaterial color="#1a0f08" roughness={0.3} metalness={0.1} />
                 </mesh>
                 <WallSconce position={[0, 3.5, 0.1]} />
             </group>
-
-            {/* Right Wall */}
             <group position={[12, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
                 <mesh position={[0, 5, 0]} receiveShadow>
                     <planeGeometry args={[30, 10]} />
                     <meshStandardMaterial color="#2b1a10" roughness={0.5} />
                 </mesh>
-                {/* Barrel pile */}
                 <group position={[0, 0.6, 1]}>
                     <Barrel position={[0, 0, 0]} />
                     <Barrel position={[1, 0, 0.2]} rotation={[0, 0.4, 0]} />
@@ -252,8 +218,6 @@ function SpeakeasyRoom() {
                 </group>
                 <WallSconce position={[0, 3.5, 0.1]} />
             </group>
-
-            {/* Ceiling */}
             <mesh position={[0, 10, 0]} rotation={[Math.PI / 2, 0, 0]}>
                 <planeGeometry args={[40, 40]} />
                 <meshStandardMaterial color="#050403" roughness={1} />
